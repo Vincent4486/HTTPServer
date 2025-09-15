@@ -9,7 +9,6 @@
 
 int main()
 {
-    char dir = serverDir();
-    printf("%s\n", dir);
+    const char *dir = get_server_directory();
     return 0;
 }
