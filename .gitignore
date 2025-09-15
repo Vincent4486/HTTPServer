@@ -16,3 +16,4 @@ build/
 *.user
 *.suo
 .vscode/
+httpserver
