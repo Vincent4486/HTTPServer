@@ -1,3 +1,4 @@
+// main.c
 #include <stdio.h>  // printf, perror
 #include <stdlib.h> // exit, malloc
 #include <string.h> // strlen, strcmp, strtok
@@ -5,8 +6,8 @@
 #include <fcntl.h>  // open, O_RDONLY
 #include <netinet/in.h>
 
-#include "include/settings.h"
-#include "include/socket.h"
+#include "settings.h"
+#include "socket.h"
 
 int main()
 {
@@ -17,5 +18,8 @@ int main()
     printf("Server Directory: %s\n", server_content_directory);
     printf("Server Port: %d\n", server_port);
     printf("Server Host: %s\n", server_host);
+
+    int server_fd = start_server(server_host, server_port);
+
     return 0;
 }

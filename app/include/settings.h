@@ -1,5 +1,6 @@
-#ifndef PROPERTIES_H
-#define PROPERTIES_H
+// settings.h
+#ifndef SETTINGS_H
+#define SETTINGS_H
 
 const char *get_server_directory(); // ✅ correct declaration
 const int get_server_port();        // ✅ correct declaration

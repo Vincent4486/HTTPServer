@@ -1,3 +1,4 @@
+// settings.c
 #include <sys/stat.h> // struct stat, stat
 #include <stdbool.h>  // getenv
 #include <stdlib.h>   // exit, EXIT_FAILURE
@@ -7,7 +8,7 @@
 #include <mach-o/dyld.h> // _NSGetExecutablePath
 #include <string.h>      // strlen, strcmp, strtok, strdup
 
-#include "include/settings.h"
+#include "settings.h"
 
 static bool directory_exists(const char *path)
 {
