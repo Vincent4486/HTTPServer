@@ -5,10 +5,13 @@
 #include <fcntl.h>  // open, O_RDONLY
 #include <netinet/in.h>
 
-#include "include/properties.h"
+#include "include/setting.h"
 
 int main()
 {
     const char *dir = get_server_directory();
+    int port = get_server_port();
+    printf("Server Directory: %s\n", dir);
+    printf("Server Port: %d\n", port);
     return 0;
 }

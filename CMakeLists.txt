@@ -7,5 +7,12 @@ set(CMAKE_C_STANDARD 99)
 # Set output directory for the executable
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
+# Include Homebrew paths for cJSON
+include_directories(/opt/homebrew/include)
+link_directories(/opt/homebrew/lib)
+
 # Add source files
-add_executable(httpserver app/main.c app/properties.c)
+add_executable(httpserver app/main.c app/setting.c)
+
+# Link with cJSON
+target_link_libraries(httpserver PRIVATE cjson)
