@@ -18,3 +18,4 @@ build/
 .vscode/
 httpserver
 debug
+.DS_Store
