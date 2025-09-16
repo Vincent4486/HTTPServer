@@ -9,5 +9,7 @@ cmake .
 # Build the project
 make
 
+echo "\ndebug.sh: Successfully built the project.\nNow running the executable...\n"
+
 # Run the executable
 ./httpserver

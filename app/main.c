@@ -9,6 +9,7 @@
 
 int main()
 {
+    setvbuf(stdout, NULL, _IONBF, 0);
     const char *dir = get_server_directory();
     int port = get_server_port();
     printf("Server Directory: %s\n", dir);
