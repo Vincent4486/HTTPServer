@@ -8,6 +8,7 @@
 
 #include "settings.h"
 #include "socket.h"
+#include "client.h"
 
 int main()
 {
@@ -20,6 +21,7 @@ int main()
     printf("Server Host: %s\n", server_host);
 
     int server_fd = start_server(server_host, server_port);
+    run_server_loop(server_fd, server_content_directory);
 
     return 0;
 }
