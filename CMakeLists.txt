@@ -12,7 +12,7 @@ include_directories(/opt/homebrew/include)
 link_directories(/opt/homebrew/lib)
 
 # Add source files
-add_executable(httpserver app/main.c app/setting.c)
+add_executable(httpserver app/main.c app/settings.c app/http.c)
 
 # Link with cJSON
 target_link_libraries(httpserver PRIVATE cjson)
