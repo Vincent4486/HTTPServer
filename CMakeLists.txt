@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(HTTPServer)
 
-include_directories(app/include)
+include_directories(src/main/cpp/include)
 
 # Set C standard
 set(CMAKE_C_STANDARD 99)
@@ -14,7 +14,7 @@ include_directories(/opt/homebrew/include)
 link_directories(/opt/homebrew/lib)
 
 # Add source files
-add_executable(httpserver app/main.c app/settings.c app/socket.c app/client.c)
+add_executable(httpserver src/main/cpp/main.c src/main/cpp/settings.c src/main/cpp/socket.c src/main/cpp/client.c)
 
 # Link with cJSON
 target_link_libraries(httpserver PRIVATE cjson)

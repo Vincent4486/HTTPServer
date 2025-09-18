@@ -1,5 +1,5 @@
 {
-    "server-port": 2556,
+    "server-port": 2555,
     "server-content-directory": "/Users/vincent/Documents/www",
-    "server-host": "192.168.66.231"
+    "server-host": "127.0.0.1"
 }
