@@ -19,6 +19,3 @@ build/
 httpserver
 debug
 .DS_Store
-*.sln
-*.vcxproj
-*.filters
