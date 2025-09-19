@@ -50,6 +50,9 @@ int main()
         printf("File Extension Mode: SHOW-EXTENSION\n");
     else
         printf("File Extension Mode: HIDE-EXTENSION\n");
+    printf("Reminder: When changed file extension mode to hide file extensions, "
+           "files wit extensions will still work, please clear browser history to have "
+           "the new version as default.\n");
 
     int server_fd = start_server(server_host, server_port);
     run_server_loop(server_fd, server_content_directory, show_file_ext);
