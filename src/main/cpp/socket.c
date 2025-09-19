@@ -1,46 +1,80 @@
-// socket.c
 #include <stdlib.h>     // exit, EXIT_FAILURE
 #include <stdio.h>      // printf, perror
 #include <string.h>     // strlen, strcmp, strtok, strdup
-#include <unistd.h>     // read, write, close
-#include <fcntl.h>      // open, O_RDONLY
-#include <netinet/in.h> // struct sockaddr_in, INADDR_ANY
-#include <sys/socket.h> // socket, bind, listen, accept
-#include <arpa/inet.h>  // inet_addr
 
-#include "socket.h"
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #pragma comment(lib, "ws2_32.lib")
+#else
+    #include <unistd.h>     // read, write, close
+    #include <fcntl.h>      // open, O_RDONLY
+    #include <netinet/in.h> // struct sockaddr_in, INADDR_ANY
+    #include <sys/socket.h> // socket, bind, listen, accept
+    #include <arpa/inet.h>  // inet_addr
+#endif
+
+#include "include/socket.h"
 
 int start_server(const char *host, int port)
 {
-    // Placeholder implementation
-    // In a real implementation, you would set up sockets and start listening here
+#ifdef _WIN32
+    WSADATA wsaData;
+    int wsa_result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (wsa_result != 0)
+    {
+        fprintf(stderr, "WSAStartup failed: %d\n", wsa_result);
+        exit(1);
+    }
+#endif
+
     int server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (server_fd == -1)
+    if (server_fd < 0)
     {
         perror("Socket creation failed");
         printf("#005\n");
-        exit(004);
+        exit(4);
     }
 
     struct sockaddr_in address;
+    memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
     address.sin_port = htons(port);
     address.sin_addr.s_addr = inet_addr(host);
+
+    int opt = 1;
+#ifdef _WIN32
+    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, (const char *)&opt, sizeof(opt));
+#else
+    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+#endif
 
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0)
     {
         perror("Bind failed");
         printf("#006\n");
-        exit(004);
+#ifdef _WIN32
+        closesocket(server_fd);
+        WSACleanup();
+#else
+        close(server_fd);
+#endif
+        exit(4);
     }
 
     if (listen(server_fd, 10) < 0)
     {
         perror("Listen failed");
         printf("#007\n");
-        exit(004);
+#ifdef _WIN32
+        closesocket(server_fd);
+        WSACleanup();
+#else
+        close(server_fd);
+#endif
+        exit(4);
     }
-    printf("Server started on %s:%d\n", host, port);
 
+    printf("Server started on %s:%d\n", host, port);
     return server_fd;
 }

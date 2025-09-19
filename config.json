@@ -1,5 +1,5 @@
 {
     "server-port": 2555,
-    "server-content-directory": "/Users/vincent/Documents/www",
+    "server-content-directory": "C:/Programing/Webistes/MyWebsite",
     "server-host": "127.0.0.1"
 }
