@@ -24,4 +24,4 @@ debug
 *.filters
 ..gitignore.un~
 .gitignore~
-
+*.html
