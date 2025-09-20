@@ -1,6 +1,7 @@
 #include <stdlib.h> // exit, EXIT_FAILURE
-#include <stdio.h>  // printf, perror
+#include <stdio.h>  // snprintf
 #include <string.h> // strlen, strcmp, strtok, strdup
+#include <errno.h>  // errno
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -15,6 +16,7 @@
 #endif
 
 #include "include/socket.h"
+#include "include/logger.h"
 
 int start_server(const char *host, int port)
 {
@@ -23,17 +25,26 @@ int start_server(const char *host, int port)
     int wsa_result = WSAStartup(MAKEWORD(2, 2), &wsaData);
     if (wsa_result != 0)
     {
-        fprintf(stderr, "WSAStartup failed: %d\n", wsa_result);
-        exit(1);
+        char err_msg[128];
+        snprintf(err_msg, sizeof(err_msg), "WSAStartup failed: %d", wsa_result);
+        log_error(err_msg);
+        exit(EXIT_FAILURE);
     }
 #endif
 
     int server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (server_fd < 0)
     {
-        perror("Socket creation failed");
-        printf("#005\n");
-        exit(4);
+#ifdef _WIN32
+        char err_msg[128];
+        snprintf(err_msg, sizeof(err_msg), "Socket creation failed: %d", WSAGetLastError());
+#else
+        char err_msg[128];
+        snprintf(err_msg, sizeof(err_msg), "Socket creation failed: %s", strerror(errno));
+#endif
+        log_error(err_msg);
+        log_error("#005");
+        exit(EXIT_FAILURE);
     }
 
     struct sockaddr_in address;
@@ -55,15 +66,17 @@ int start_server(const char *host, int port)
         address.sin_addr.s_addr = inet_addr(host);
         if (address.sin_addr.s_addr == INADDR_NONE)
         {
-            fprintf(stderr, "Invalid IP address: %s\n", host);
-            printf("#004\n");
+            char err_msg[128];
+            snprintf(err_msg, sizeof(err_msg), "Invalid IP address: %s", host);
+            log_error(err_msg);
+            log_error("#004");
 #ifdef _WIN32
             closesocket(server_fd);
             WSACleanup();
 #else
             close(server_fd);
 #endif
-            exit(4);
+            exit(EXIT_FAILURE);
         }
     }
 
@@ -76,30 +89,47 @@ int start_server(const char *host, int port)
 
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0)
     {
-        perror("Bind failed");
-        printf("#006\n");
+#ifdef _WIN32
+        char err_msg[128];
+        snprintf(err_msg, sizeof(err_msg), "Bind failed: %d", WSAGetLastError());
+#else
+        char err_msg[128];
+        snprintf(err_msg, sizeof(err_msg), "Bind failed: %s", strerror(errno));
+#endif
+        log_error(err_msg);
+        log_error("#006");
 #ifdef _WIN32
         closesocket(server_fd);
         WSACleanup();
 #else
         close(server_fd);
 #endif
-        exit(4);
+        exit(EXIT_FAILURE);
     }
 
     if (listen(server_fd, 10) < 0)
     {
-        perror("Listen failed");
-        printf("#007\n");
+#ifdef _WIN32
+        char err_msg[128];
+        snprintf(err_msg, sizeof(err_msg), "Listen failed: %d", WSAGetLastError());
+#else
+        char err_msg[128];
+        snprintf(err_msg, sizeof(err_msg), "Listen failed: %s", strerror(errno));
+#endif
+        log_error(err_msg);
+        log_error("#007");
 #ifdef _WIN32
         closesocket(server_fd);
         WSACleanup();
 #else
         close(server_fd);
 #endif
-        exit(4);
+        exit(EXIT_FAILURE);
     }
 
-    printf("Server started on %s:%d\n", host, port);
+    char info_msg[128];
+    snprintf(info_msg, sizeof(info_msg), "Server started on %s:%d", host, port);
+    log_info(info_msg);
+
     return server_fd;
 }

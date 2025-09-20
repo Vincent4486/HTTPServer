@@ -23,6 +23,7 @@
 #include "include/settings.h"
 #include "include/socket.h"
 #include "include/client.h"
+#include "include/logger.h"
 
 int main()
 {
@@ -43,16 +44,18 @@ int main()
     const char *server_host = get_server_host();
     const bool show_file_ext = get_show_file_extension();
 
-    printf("Server Directory: %s\n", server_content_directory);
-    printf("Server Port: %d\n", server_port);
-    printf("Server Host: %s\n", server_host);
+    log_info("Server Directory: ");
+    log_info(server_content_directory);
+    char port_message[50];
+    snprintf(port_message, sizeof(port_message), "Server Port: %d", server_port);
+    log_info(port_message);
+    log_info("Server Host: ");
+    log_info(server_host);
     if (show_file_ext)
-        printf("File Extension Mode: SHOW-EXTENSION\n");
+        log_info("File Extension Mode: SHOW-EXTENSION");
     else
-        printf("File Extension Mode: HIDE-EXTENSION\n");
-    printf("Reminder: When changed file extension mode to hide file extensions, "
-           "files wit extensions will still work, please clear browser history to have "
-           "the new version as default.\n");
+        log_info("File Extension Mode: HIDE-EXTENSION");
+    log_info("Reminder: When changed file extension mode to hide file extensions, files wit extensions will still work, please clear browser history to have the new version as default.");
 
     int server_fd = start_server(server_host, server_port);
     run_server_loop(server_fd, server_content_directory, show_file_ext);

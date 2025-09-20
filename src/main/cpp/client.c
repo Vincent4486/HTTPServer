@@ -1,10 +1,11 @@
-#include <stdio.h>    // printf, perror
-#include <stdlib.h>   // exit, EXIT_FAILURE
-#include <string.h>   // strlen, strcpy, memset
-#include <stdbool.h>  // bool, true, fals
-#include <stdint.h>   // intmax_t
-#include <inttypes.h> // PRIdMAX
-#include <ctype.h>    // isxdigit
+#include <stdio.h>      // printf, perror
+#include <stdlib.h>     // exit, EXIT_FAILURE
+#include <string.h>     // strlen, strcpy, memset
+#include <stdbool.h>    // bool, true, fals
+#include <stdint.h>     // intmax_t
+#include <inttypes.h>   // PRIdMAX
+#include <ctype.h>      // isxdigit
+#include <netinet/in.h> // sockaddr_in
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -29,6 +30,7 @@
 #endif
 
 #include "include/client.h"
+#include "include/logger.h"
 
 static int url_decode(char *s)
 {
@@ -611,14 +613,27 @@ void run_server_loop(int server_fd, const char *content_directory, const bool sh
 {
     while (1)
     {
-        int client_fd = accept(server_fd, NULL, NULL);
+        struct sockaddr_in client_addr;
+        socklen_t addr_len = sizeof(client_addr);
+
+        int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len);
         if (client_fd < 0)
         {
-            perror("Accept failed");
+            char err_msg[256];
+            snprintf(err_msg, sizeof(err_msg), "Something failed: %s", strerror(errno));
+            log_error(err_msg);
             continue;
         }
 
+        // Extract client IP and port
+        char client_ip[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, sizeof(client_ip));
+        int client_port = ntohs(client_addr.sin_port);
+
+        char log_msg[128];
+        snprintf(log_msg, sizeof(log_msg), "Accepted connection from %s:%d", client_ip, client_port);
+        log_info(log_msg);
+
         handle_client(client_fd, content_directory, show_ext);
-        printf("Loop Running\n");
     }
 }

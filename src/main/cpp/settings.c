@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -21,6 +22,7 @@
 #endif
 
 #include "include/settings.h"
+#include "include/logger.h"
 
 static cJSON *cached_config = NULL;
 
@@ -38,8 +40,8 @@ char *get_config_path()
 #ifdef _WIN32
     if (!GetModuleFileNameA(NULL, path, sizeof(path)))
     {
-        fprintf(stderr, "Failed to get executable path\n");
-        exit(1);
+        log_error("Failed to get executable path");
+        exit(EXIT_FAILURE);
     }
     char *last_backslash = strrchr(path, '\\');
     if (last_backslash)
@@ -48,8 +50,8 @@ char *get_config_path()
     uint32_t size = sizeof(path);
     if (_NSGetExecutablePath(path, &size) != 0)
     {
-        fprintf(stderr, "Executable path too long\n");
-        exit(1);
+        log_error("Executable path too long");
+        exit(EXIT_FAILURE);
     }
     char *last_slash = strrchr(path, '/');
     if (last_slash)
@@ -58,8 +60,10 @@ char *get_config_path()
     ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
     if (len == -1)
     {
-        perror("readlink");
-        exit(1);
+        char err_msg[128];
+        snprintf(err_msg, sizeof(err_msg), "readlink failed: %s", strerror(errno));
+        log_error(err_msg);
+        exit(EXIT_FAILURE);
     }
     path[len] = '\0';
     char *last_slash = strrchr(path, '/');
@@ -80,8 +84,10 @@ static void load_config()
     FILE *file = fopen(filepath, "r");
     if (!file)
     {
-        perror("Failed to open config.json");
-        exit(1);
+        char err_msg[256];
+        snprintf(err_msg, sizeof(err_msg), "Failed to open config.json: %s", strerror(errno));
+        log_error(err_msg);
+        exit(EXIT_FAILURE);
     }
 
     fseek(file, 0, SEEK_END);
@@ -91,8 +97,9 @@ static void load_config()
     char *data = malloc(length + 1);
     if (!data)
     {
-        fprintf(stderr, "Memory allocation failed\n");
-        exit(1);
+        log_error("Memory allocation failed while reading config");
+        fclose(file);
+        exit(EXIT_FAILURE);
     }
 
     fread(data, 1, length, file);
@@ -104,8 +111,10 @@ static void load_config()
 
     if (!cached_config)
     {
-        fprintf(stderr, "Error parsing JSON: %s\n", cJSON_GetErrorPtr());
-        exit(1);
+        char err_msg[256];
+        snprintf(err_msg, sizeof(err_msg), "Error parsing JSON: %s", cJSON_GetErrorPtr());
+        log_error(err_msg);
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -115,8 +124,8 @@ const int get_server_port()
     cJSON *port = cJSON_GetObjectItemCaseSensitive(cached_config, "server-port");
     if (!cJSON_IsNumber(port))
     {
-        fprintf(stderr, "Port not found or not a number\n");
-        exit(1);
+        log_error("Port not found or not a number in config.json");
+        exit(EXIT_FAILURE);
     }
     return port->valueint;
 }
@@ -127,15 +136,17 @@ const char *get_server_directory()
     cJSON *dir = cJSON_GetObjectItemCaseSensitive(cached_config, "server-content-directory");
     if (!cJSON_IsString(dir) || dir->valuestring == NULL)
     {
-        fprintf(stderr, "Directory not found or not a string\n");
-        exit(1);
+        log_error("Directory not found or not a string in config.json");
+        exit(EXIT_FAILURE);
     }
 
     const char *path = dir->valuestring;
     if (!directory_exists(path))
     {
-        fprintf(stderr, "Directory does not exist: %s\n", path);
-        exit(1);
+        char err_msg[256];
+        snprintf(err_msg, sizeof(err_msg), "Directory does not exist: %s", path);
+        log_error(err_msg);
+        exit(EXIT_FAILURE);
     }
 
     return strdup(path);
@@ -147,8 +158,8 @@ const char *get_server_host()
     cJSON *host = cJSON_GetObjectItemCaseSensitive(cached_config, "server-host");
     if (!cJSON_IsString(host) || host->valuestring == NULL)
     {
-        fprintf(stderr, "Host not found or not a string\n");
-        exit(1);
+        log_error("Host not found or not a string in config.json");
+        exit(EXIT_FAILURE);
     }
     return strdup(host->valuestring);
 }
