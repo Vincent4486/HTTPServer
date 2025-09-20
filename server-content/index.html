@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>HTTP Server Status</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(to right, #f0f4f8, #d9e2ec);
+            color: #333;
+        }
+
+        header {
+            background-color: #2f855a;
+            color: white;
+            padding: 20px 40px;
+            text-align: center;
+        }
+
+        main {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .status-box {
+            background-color: #e6fffa;
+            border-left: 6px solid #38b2ac;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-box h2 {
+            margin-top: 0;
+            color: #2c7a7b;
+        }
+
+        .info-list {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .info-list li {
+            margin-bottom: 10px;
+        }
+
+        footer {
+            text-align: center;
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 60px;
+            padding-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>✅ HTTP Server is Running</h1>
+        <p>Welcome to your local development server</p>
+    </header>
+    <main>
+        <div class="status-box">
+            <h2>Server Details</h2>
+            <ul class="info-list">
+                <li><strong>Root Directory:</strong> <code>server-content</code></li>
+                <li><strong>Config Source:</strong> <code>config.json</code></li>
+                <li><strong>Serving From:</strong> Executable directory</li>
+                <li><strong>Default Page:</strong> <code>index.html</code></li>
+            </ul>
+        </div>
+
+        <div class="status-box">
+            <h2>Usage Instructions</h2>
+            <ul class="info-list">
+                <li>Place your static files (HTML, CSS, JS, images) inside the <code>httpdocs</code> folder.</li>
+                <li>Access files via your browser using paths like <code>http://localhost:PORT/filename</code>.</li>
+                <li>Update <code>config.json</code> to change the content directory or other settings.</li>
+                <li>Restart the server after modifying configuration.</li>
+            </ul>
+        </div>
+
+        <div class="status-box">
+            <h2>Debug Tips</h2>
+            <ul class="info-list">
+                <li>Check logs in the same directory as the executable.</li>
+                <li>Ensure <code>httpdocs</code> exists and has proper permissions.</li>
+                <li>Use absolute paths in config if needed for testing.</li>
+            </ul>
+        </div>
+    </main>
+    <footer>
+        &copy; 2025 Vincent's HTTP Server. All systems operational.
+    </footer>
+</body>
+
+</html>
