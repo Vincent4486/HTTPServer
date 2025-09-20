@@ -1,6 +1,6 @@
 {
     "server-port": 2555,
-    "server-content-directory": "/Users/vincent/Programming/MyWebsite",
+    "server-content-directory": "default",
     "server-host": "any",
     "show-file-extension": false
 }

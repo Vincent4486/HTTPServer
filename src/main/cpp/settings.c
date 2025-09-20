@@ -141,7 +141,36 @@ const char *get_server_directory()
     }
 
     const char *path = dir->valuestring;
-    if (!directory_exists(path))
+    if (strcmp(path, "default") == 0)
+    {
+        char *executable_dir = get_config_path();
+        char *last_slash = strrchr(executable_dir, '/');
+        if (last_slash)
+            *last_slash = '\0';
+
+        static char default_dir[1024];
+        snprintf(default_dir, sizeof(default_dir), "%s/server-content", executable_dir);
+
+        if (!directory_exists(default_dir))
+        {
+            if (mkdir(default_dir, 0700) != 0)
+            {
+                char err_msg[256];
+                snprintf(err_msg, sizeof(err_msg), "Failed to create default directory: %s", default_dir);
+                log_error(err_msg);
+                exit(EXIT_FAILURE);
+            }
+            else
+            {
+                char success_msg[256];
+                snprintf(success_msg, sizeof(success_msg), "Default directory created: %s", default_dir);
+                log_info(success_msg);
+            }
+        }
+
+        return strdup(default_dir);
+    }
+    else if (!directory_exists(path))
     {
         char err_msg[256];
         snprintf(err_msg, sizeof(err_msg), "Directory does not exist: %s", path);
