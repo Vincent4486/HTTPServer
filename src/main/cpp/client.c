@@ -29,6 +29,8 @@
 #include <errno.h>      // errno
 #endif
 
+#include <limits.h> // PATH_MAX
+
 #include "include/client.h"
 #include "include/logger.h"
 
