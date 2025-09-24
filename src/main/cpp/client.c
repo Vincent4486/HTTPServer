@@ -34,7 +34,6 @@
 #include "include/client.h"
 #include "include/logger.h"
 #include "include/http.h"
-#include "include/php.h"
 
 int url_decode(char *s)
 {
