@@ -14,7 +14,7 @@ include_directories(/opt/homebrew/include)
 link_directories(/opt/homebrew/lib)
 
 # Add source files
-add_executable(httpserver src/main/c/main.c src/main/c/settings.c src/main/c/socket.c src/main/c/client.c src/main/c/logger.c src/main/c/http.c)
+add_executable(httpserver src/main/cpp/main.c src/main/cpp/settings.c src/main/cpp/socket.c src/main/cpp/client.c src/main/c/logger.c)
 
 # Link with cJSON
 target_link_libraries(httpserver PRIVATE cjson)

@@ -3,6 +3,11 @@
 #include <string.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <errno.h>
+#include <limits.h>
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 #ifdef _WIN32
 #include <windows.h>
@@ -75,7 +80,7 @@ static void initialize_log_file()
     if (stat(log_dir, &st) == -1)
     {
 #ifdef _WIN32
-        if (_mkdir(log_dir) == -1)
+        if (mkdir(log_dir) == -1)
         {
 #else
         if (mkdir(log_dir, 0700) == -1)

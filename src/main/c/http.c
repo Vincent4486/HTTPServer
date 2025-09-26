@@ -5,8 +5,15 @@
 #include <stdint.h>     // intmax_t
 #include <inttypes.h>   // PRIdMAX
 #include <ctype.h>      // isxdigit
-#include <netinet/in.h> // sockaddr_in
 #include <limits.h>     // PATH_MAX
+
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#define realpath(N,R) _fullpath((R),(N),_MAX_PATH)
+#else
+#include <netinet/in.h> // sockaddr_in
+#endif
 
 #ifdef _WIN32
 #include <winsock2.h>

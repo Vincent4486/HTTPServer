@@ -153,7 +153,11 @@ const char *get_server_directory()
 
         if (!directory_exists(default_dir))
         {
+#ifdef _WIN32
+            if (mkdir(default_dir) != 0)
+#else
             if (mkdir(default_dir, 0700) != 0)
+#endif
             {
                 char err_msg[256];
                 snprintf(err_msg, sizeof(err_msg), "Failed to create default directory: %s", default_dir);
