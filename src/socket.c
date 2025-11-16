@@ -30,13 +30,10 @@ int start_server(const char *host, int port)
     if (server_fd < 0)
     {
 #ifdef _WIN32
-        char err_msg[128];
-        snprintf(err_msg, sizeof(err_msg), "Socket creation failed: %d", WSAGetLastError());
-        log_error_code(5, "%s", err_msg); /* #005 */
+        int err = WSAGetLastError();
+        log_error_code(5, "Socket creation failed: %d", err);
 #else
-        char err_msg[128];
-        snprintf(err_msg, sizeof(err_msg), "Socket creation failed: %s", strerror(errno));
-        log_error_code(5, "%s", err_msg); /* #005 */
+        log_error_code(5, "Socket creation failed: %s", strerror(errno));
 #endif
         exit(EXIT_FAILURE);
     }
@@ -60,9 +57,7 @@ int start_server(const char *host, int port)
         address.sin_addr.s_addr = inet_addr(host);
                 if (address.sin_addr.s_addr == INADDR_NONE)
                 {
-                        char err_msg[128];
-                        snprintf(err_msg, sizeof(err_msg), "Invalid IP address: %s", host);
-                        log_error_code(13, "%s", err_msg); /* #013 */
+                        log_error_code(13, "Invalid IP address: %s", host);
 #ifdef _WIN32
                         CLOSE_SOCKET(server_fd);
                         WSACleanup();
@@ -83,13 +78,10 @@ int start_server(const char *host, int port)
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0)
     {
 #ifdef _WIN32
-        char err_msg[128];
-        snprintf(err_msg, sizeof(err_msg), "Bind failed: %d", WSAGetLastError());
+        log_error_code(6, "Bind failed: %d", WSAGetLastError());
 #else
-        char err_msg[128];
-        snprintf(err_msg, sizeof(err_msg), "Bind failed: %s", strerror(errno));
+        log_error_code(6, "Bind failed: %s", strerror(errno));
 #endif
-        log_error_code(6, "%s", err_msg); /* #006 */
 #ifdef _WIN32
         closesocket(server_fd);
         WSACleanup();
@@ -102,13 +94,9 @@ int start_server(const char *host, int port)
     if (listen(server_fd, 10) < 0)
     {
 #ifdef _WIN32
-        char err_msg[128];
-        snprintf(err_msg, sizeof(err_msg), "Listen failed: %d", WSAGetLastError());
-        log_error_code(7, "%s", err_msg); /* #007 */
+        log_error_code(7, "Listen failed: %d", WSAGetLastError());
 #else
-        char err_msg[128];
-        snprintf(err_msg, sizeof(err_msg), "Listen failed: %s", strerror(errno));
-        log_error_code(7, "%s", err_msg); /* #007 */
+        log_error_code(7, "Listen failed: %s", strerror(errno));
 #endif
 #ifdef _WIN32
         CLOSE_SOCKET(server_fd);

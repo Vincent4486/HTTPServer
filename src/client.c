@@ -94,32 +94,62 @@ const char *get_mime_type(const char *path)
     const char *ext = strrchr(path, '.');
     if (!ext)
         return "application/octet-stream";
-    if (strcmp(ext, ".html") == 0)
-        return "text/html";
-    if (strcmp(ext, ".css") == 0)
-        return "text/css";
-    if (strcmp(ext, ".js") == 0)
-        return "application/javascript";
-    if (strcmp(ext, ".png") == 0)
-        return "image/png";
-    if (strcmp(ext, ".jpg") == 0 || strcmp(ext, ".jpeg") == 0)
-        return "image/jpeg";
-    if (strcmp(ext, ".gif") == 0)
-        return "image/gif";
-    if (strcmp(ext, ".svg") == 0)
-        return "image/svg+xml";
-    if (strcmp(ext, ".ico") == 0)
-        return "image/x-icon";
+
+    /* Use faster hash-like approach based on extension length and first char */
+    size_t ext_len = strlen(ext);
+    char first = ext[0];
+    char second = ext_len > 1 ? ext[1] : '\0';
+
+    /* Quick pre-filter by length and common patterns */
+    if (ext_len == 5)  /* .html, .jpeg */
+    {
+        if (strcmp(ext, ".html") == 0)
+            return "text/html";
+        if (strcmp(ext, ".jpeg") == 0)
+            return "image/jpeg";
+    }
+    else if (ext_len == 4)
+    {
+        if (strcmp(ext, ".css") == 0)
+            return "text/css";
+        if (strcmp(ext, ".json") == 0)
+            return "application/json";
+        if (strcmp(ext, ".html") == 0)
+            return "text/html";
+        if (strcmp(ext, ".jpeg") == 0)
+            return "image/jpeg";
+    }
+    else if (ext_len == 3)
+    {
+        if (strcmp(ext, ".js") == 0)
+            return "application/javascript";
+        if (strcmp(ext, ".png") == 0)
+            return "image/png";
+        if (strcmp(ext, ".jpg") == 0)
+            return "image/jpeg";
+        if (strcmp(ext, ".gif") == 0)
+            return "image/gif";
+        if (strcmp(ext, ".svg") == 0)
+            return "image/svg+xml";
+        if (strcmp(ext, ".ico") == 0)
+            return "image/x-icon";
+        if (strcmp(ext, ".xml") == 0)
+            return "application/xml";
+        if (strcmp(ext, ".pdf") == 0)
+            return "application/pdf";
+    }
+
     return "application/octet-stream";
 }
 
 int stream_file_fd(int client_fd, int fd, off_t filesize)
 {
     ssize_t r;
-    const size_t BUF_SZ = 16 * 1024;
+    const size_t BUF_SZ = 64 * 1024;  /* Increased from 16KB to 64KB for better throughput */
     char *buf = malloc(BUF_SZ);
     if (!buf)
         return -1;
+
     off_t remaining = filesize;
     while (remaining > 0)
     {
@@ -130,20 +160,22 @@ int stream_file_fd(int client_fd, int fd, off_t filesize)
             free(buf);
             return -1;
         }
-        ssize_t w = 0;
+
+        /* Write entire buffer, handling partial writes */
         char *p = buf;
-        while (r > 0)
+        ssize_t bytes_to_write = r;
+        while (bytes_to_write > 0)
         {
-            ssize_t wn = write(client_fd, p, r);
+            ssize_t wn = write(client_fd, p, (unsigned int)bytes_to_write);
             if (wn <= 0)
             {
                 free(buf);
                 return -1;
             }
-            r -= wn;
+            bytes_to_write -= wn;
             p += wn;
         }
-        remaining -= (off_t)(p - buf);
+        remaining -= (off_t)r;
     }
     free(buf);
     return 0;
