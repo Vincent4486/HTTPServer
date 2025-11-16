@@ -9,35 +9,8 @@
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
+#include "include/compat.h"
 
-#ifdef _WIN32
-typedef int64_t ssize_t;
-#endif
-
-#ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <io.h>       // _read, _write, _close
-#include <fcntl.h>    // _O_RDONLY
-#include <sys/stat.h> // stat
-#include <errno.h>    // errno
-#define read _read
-#define write _write
-#define close _close
-#define open _open
-#define O_RDONLY _O_RDONLY
-#define strcasecmp _stricmp
-#define PATH_SEP '\\'
-#pragma comment(lib, "ws2_32.lib")
-#else
-#include <unistd.h>     // read, write, close
-#include <arpa/inet.h>  // sockaddr_in, inet_addr
-#include <sys/socket.h> // socket, connect
-#include <fcntl.h>      // open, O_RDONLY
-#include <sys/stat.h>   // stat
-#include <errno.h>      // errno
-#include <netinet/in.h> // sockaddr_in
-#endif
 
 #include <limits.h> // PATH_MAX
 
@@ -316,7 +289,7 @@ void run_server_loop(int server_fd, const char *content_directory, const bool sh
     // Initialize Winsock
     WSADATA wsa_data;
     if (WSAStartup(MAKEWORD(2,2), &wsa_data) != 0) {
-        log_error("Failed to initialize Winsock");
+        log_error_code(12, "Failed to initialize Winsock"); /* #012 */
         return;
     }
 #endif
@@ -330,8 +303,8 @@ void run_server_loop(int server_fd, const char *content_directory, const bool sh
         if (client_fd < 0)
         {
             char err_msg[256];
-            snprintf(err_msg, sizeof(err_msg), "Something failed: %s", strerror(errno));
-            log_error(err_msg);
+            snprintf(err_msg, sizeof(err_msg), "accept() failed: %s", strerror(errno));
+            log_error_code(15, "%s", err_msg); /* #015 */
             continue;
         }
 

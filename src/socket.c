@@ -3,16 +3,10 @@
 #include <string.h> // strlen, strcmp, strtok, strdup
 #include <errno.h>  // errno
 
+#include "include/compat.h"
+
 #ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
 #pragma comment(lib, "ws2_32.lib")
-#else
-#include <unistd.h>     // read, write, close
-#include <fcntl.h>      // open, O_RDONLY
-#include <netinet/in.h> // struct sockaddr_in, INADDR_ANY
-#include <sys/socket.h> // socket, bind, listen, accept
-#include <arpa/inet.h>  // inet_addr
 #endif
 
 #include "include/socket.h"
@@ -25,9 +19,9 @@ int start_server(const char *host, int port)
     int wsa_result = WSAStartup(MAKEWORD(2, 2), &wsaData);
     if (wsa_result != 0)
     {
-        char err_msg[128];
-        snprintf(err_msg, sizeof(err_msg), "WSAStartup failed: %d", wsa_result);
-        log_error(err_msg);
+                char err_msg[128];
+                snprintf(err_msg, sizeof(err_msg), "WSAStartup failed: %d", wsa_result);
+                log_error_code(12, "%s", err_msg); /* #012 */
         exit(EXIT_FAILURE);
     }
 #endif
@@ -38,12 +32,12 @@ int start_server(const char *host, int port)
 #ifdef _WIN32
         char err_msg[128];
         snprintf(err_msg, sizeof(err_msg), "Socket creation failed: %d", WSAGetLastError());
+        log_error_code(5, "%s", err_msg); /* #005 */
 #else
         char err_msg[128];
         snprintf(err_msg, sizeof(err_msg), "Socket creation failed: %s", strerror(errno));
+        log_error_code(5, "%s", err_msg); /* #005 */
 #endif
-        log_error(err_msg);
-        log_error("#005");
         exit(EXIT_FAILURE);
     }
 
@@ -64,20 +58,19 @@ int start_server(const char *host, int port)
     else
     {
         address.sin_addr.s_addr = inet_addr(host);
-        if (address.sin_addr.s_addr == INADDR_NONE)
-        {
-            char err_msg[128];
-            snprintf(err_msg, sizeof(err_msg), "Invalid IP address: %s", host);
-            log_error(err_msg);
-            log_error("#004");
+                if (address.sin_addr.s_addr == INADDR_NONE)
+                {
+                        char err_msg[128];
+                        snprintf(err_msg, sizeof(err_msg), "Invalid IP address: %s", host);
+                        log_error_code(13, "%s", err_msg); /* #013 */
 #ifdef _WIN32
-            closesocket(server_fd);
-            WSACleanup();
+                        CLOSE_SOCKET(server_fd);
+                        WSACleanup();
 #else
-            close(server_fd);
+                        close(server_fd);
 #endif
-            exit(EXIT_FAILURE);
-        }
+                        exit(EXIT_FAILURE);
+                }
     }
 
     int opt = 1;
@@ -96,8 +89,7 @@ int start_server(const char *host, int port)
         char err_msg[128];
         snprintf(err_msg, sizeof(err_msg), "Bind failed: %s", strerror(errno));
 #endif
-        log_error(err_msg);
-        log_error("#006");
+        log_error_code(6, "%s", err_msg); /* #006 */
 #ifdef _WIN32
         closesocket(server_fd);
         WSACleanup();
@@ -112,14 +104,14 @@ int start_server(const char *host, int port)
 #ifdef _WIN32
         char err_msg[128];
         snprintf(err_msg, sizeof(err_msg), "Listen failed: %d", WSAGetLastError());
+        log_error_code(7, "%s", err_msg); /* #007 */
 #else
         char err_msg[128];
         snprintf(err_msg, sizeof(err_msg), "Listen failed: %s", strerror(errno));
+        log_error_code(7, "%s", err_msg); /* #007 */
 #endif
-        log_error(err_msg);
-        log_error("#007");
 #ifdef _WIN32
-        closesocket(server_fd);
+        CLOSE_SOCKET(server_fd);
         WSACleanup();
 #else
         close(server_fd);

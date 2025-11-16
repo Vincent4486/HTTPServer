@@ -3,21 +3,10 @@
 #include <string.h>  // strlen, strcmp, strtok
 #include <stdbool.h> // bool
 
+#include "include/compat.h"
+
 #ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <io.h>    // _read, _write, _close
-#include <fcntl.h> // _O_RDONLY
-#define read _read
-#define write _write
-#define close _close
-#define open _open
-#define O_RDONLY _O_RDONLY
 #pragma comment(lib, "ws2_32.lib")
-#else
-#include <unistd.h> // read, write, close
-#include <fcntl.h>  // open, O_RDONLY
-#include <netinet/in.h>
 #endif
 
 #include "include/settings.h"

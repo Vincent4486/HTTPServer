@@ -5,19 +5,24 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <limits.h>
+#include <time.h>
+#include <stdint.h>
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
 
 #ifdef _WIN32
 #include <windows.h>
+#elif defined(__APPLE__)
+#include <unistd.h>
+#include <mach-o/dyld.h>
 #else
 #include <unistd.h>
-#include <limits.h>
-#include <mach-o/dyld.h>
 #endif
 
 #include "include/logger.h"
+
+#include <stdarg.h>
 
 static char log_file_path[PATH_MAX] = "";
 
@@ -37,7 +42,7 @@ static void get_executable_dir(char *buffer, size_t size)
     if (last_slash)
         *last_slash = '\0';
     strncpy(buffer, exe_path, size);
-#else
+#elif defined(__APPLE__)
     char exe_path[PATH_MAX];
     uint32_t len = sizeof(exe_path);
     if (_NSGetExecutablePath(exe_path, &len) != 0)
@@ -57,6 +62,21 @@ static void get_executable_dir(char *buffer, size_t size)
     if (last_slash)
         *last_slash = '\0';
     strncpy(buffer, resolved, size);
+#else
+    /* Linux and other Unix-like: use /proc/self/exe */
+    char exe_path[PATH_MAX];
+    ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
+    if (len == -1)
+    {
+        perror("readlink failed");
+        exit(EXIT_FAILURE);
+    }
+    exe_path[len] = '\0';
+
+    char *last_slash = strrchr(exe_path, '/');
+    if (last_slash)
+        *last_slash = '\0';
+    strncpy(buffer, exe_path, size);
 #endif
 }
 
@@ -133,4 +153,22 @@ void log_error(const char *message)
 {
     fprintf(stderr, "[ERROR] %s\n", message);
     log_to_file("ERROR", message);
+}
+
+void log_error_code(int code, const char *fmt, ...)
+{
+    char buf[1024];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+
+    char prefixed[1150];
+    if (code > 0)
+        snprintf(prefixed, sizeof(prefixed), "#%03d %s", code, buf);
+    else
+        snprintf(prefixed, sizeof(prefixed), "%s", buf);
+
+    fprintf(stderr, "[ERROR] %s\n", prefixed);
+    log_to_file("ERROR", prefixed);
 }

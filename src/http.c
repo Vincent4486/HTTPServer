@@ -7,34 +7,10 @@
 #include <ctype.h>      // isxdigit
 #include <limits.h>     // PATH_MAX
 
-#ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#define realpath(N,R) _fullpath((R),(N),_MAX_PATH)
-#else
-#include <netinet/in.h> // sockaddr_in
-#endif
+#include "include/compat.h"
 
 #ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <io.h>       // _read, _write, _close
-#include <fcntl.h>    // _O_RDONLY
-#include <sys/stat.h> // stat
-#include <errno.h>    // errno
-#define read _read
-#define write _write
-#define close _close
-#define open _open
-#define O_RDONLY _O_RDONLY
 #pragma comment(lib, "ws2_32.lib")
-#else
-#include <unistd.h>     // read, write, close
-#include <arpa/inet.h>  // sockaddr_in, inet_addr
-#include <sys/socket.h> // socket, connect
-#include <fcntl.h>      // open, O_RDONLY
-#include <sys/stat.h>   // stat
-#include <errno.h>      // errno
 #endif
 
 #include "include/http.h"

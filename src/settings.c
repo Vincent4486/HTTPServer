@@ -15,11 +15,7 @@
 #endif
 #endif
 
-#ifdef _WIN32
 #include "lib/cJSON.h"
-#else
-#include <cjson/cJSON.h>
-#endif
 
 #include "include/settings.h"
 #include "include/logger.h"
@@ -40,7 +36,7 @@ char *get_config_path()
 #ifdef _WIN32
     if (!GetModuleFileNameA(NULL, path, sizeof(path)))
     {
-        log_error("Failed to get executable path");
+        log_error_code(16, "Failed to get executable path"); /* #016 */
         exit(EXIT_FAILURE);
     }
     char *last_backslash = strrchr(path, '\\');
@@ -50,7 +46,7 @@ char *get_config_path()
     uint32_t size = sizeof(path);
     if (_NSGetExecutablePath(path, &size) != 0)
     {
-        log_error("Executable path too long");
+        log_error_code(17, "Executable path too long"); /* #017 */
         exit(EXIT_FAILURE);
     }
     char *last_slash = strrchr(path, '/');
@@ -62,7 +58,7 @@ char *get_config_path()
     {
         char err_msg[128];
         snprintf(err_msg, sizeof(err_msg), "readlink failed: %s", strerror(errno));
-        log_error(err_msg);
+            log_error_code(8, "%s", err_msg); /* #008 */
         exit(EXIT_FAILURE);
     }
     path[len] = '\0';
@@ -86,7 +82,7 @@ static void load_config()
     {
         char err_msg[256];
         snprintf(err_msg, sizeof(err_msg), "Failed to open config.json: %s", strerror(errno));
-        log_error(err_msg);
+            log_error_code(9, "%s", err_msg); /* #009 */
         exit(EXIT_FAILURE);
     }
 
@@ -97,7 +93,7 @@ static void load_config()
     char *data = malloc(length + 1);
     if (!data)
     {
-        log_error("Memory allocation failed while reading config");
+            log_error_code(11, "Memory allocation failed while reading config"); /* #011 */
         fclose(file);
         exit(EXIT_FAILURE);
     }
@@ -113,7 +109,7 @@ static void load_config()
     {
         char err_msg[256];
         snprintf(err_msg, sizeof(err_msg), "Error parsing JSON: %s", cJSON_GetErrorPtr());
-        log_error(err_msg);
+            log_error_code(10, "%s", err_msg); /* #010 */
         exit(EXIT_FAILURE);
     }
 }
@@ -124,7 +120,7 @@ const int get_server_port()
     cJSON *port = cJSON_GetObjectItemCaseSensitive(cached_config, "server-port");
     if (!cJSON_IsNumber(port))
     {
-        log_error("Port not found or not a number in config.json");
+           log_error_code(2, "Port not found or not a number in config.json"); /* #002 */
         exit(EXIT_FAILURE);
     }
     return port->valueint;
@@ -136,7 +132,7 @@ const char *get_server_directory()
     cJSON *dir = cJSON_GetObjectItemCaseSensitive(cached_config, "server-content-directory");
     if (!cJSON_IsString(dir) || dir->valuestring == NULL)
     {
-        log_error("Directory not found or not a string in config.json");
+            log_error_code(3, "Directory not found or not a string in config.json"); /* #003 */
         exit(EXIT_FAILURE);
     }
 
@@ -161,7 +157,7 @@ const char *get_server_directory()
             {
                 char err_msg[256];
                 snprintf(err_msg, sizeof(err_msg), "Failed to create default directory: %s", default_dir);
-                log_error(err_msg);
+                    log_error_code(14, "%s", err_msg); /* #014 */
                 exit(EXIT_FAILURE);
             }
             else
@@ -178,7 +174,7 @@ const char *get_server_directory()
     {
         char err_msg[256];
         snprintf(err_msg, sizeof(err_msg), "Directory does not exist: %s", path);
-        log_error(err_msg);
+            log_error_code(1, "%s", err_msg); /* #001 */
         exit(EXIT_FAILURE);
     }
 
@@ -191,7 +187,7 @@ const char *get_server_host()
     cJSON *host = cJSON_GetObjectItemCaseSensitive(cached_config, "server-host");
     if (!cJSON_IsString(host) || host->valuestring == NULL)
     {
-        log_error("Host not found or not a string in config.json");
+        log_error_code(4, "Host not found or not a string in config.json"); /* #004 */
         exit(EXIT_FAILURE);
     }
     return strdup(host->valuestring);
