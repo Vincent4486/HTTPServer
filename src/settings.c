@@ -20,6 +20,23 @@
 #include "include/settings.h"
 #include "include/logger.h"
 
+/* If S_ISDIR/S_ISREG are not available on this platform, provide small fallbacks
+    locally to avoid pulling in Windows socket headers here. */
+#ifndef S_ISDIR
+#ifdef _S_IFDIR
+#define S_ISDIR(m) (((m) & _S_IFDIR) == _S_IFDIR)
+#else
+#define S_ISDIR(m) 0
+#endif
+#endif
+#ifndef S_ISREG
+#ifdef _S_IFREG
+#define S_ISREG(m) (((m) & _S_IFREG) == _S_IFREG)
+#else
+#define S_ISREG(m) 0
+#endif
+#endif
+
 static cJSON *cached_config = NULL;
 
 static bool directory_exists(const char *path)

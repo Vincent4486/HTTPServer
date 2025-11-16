@@ -6,23 +6,12 @@
 #include <inttypes.h>   // PRIdMAX
 #include <ctype.h>      // isxdigit
 
-#ifndef PATH_MAX
-#define PATH_MAX 4096
-#endif
 #include "include/compat.h"
-
-
 #include <limits.h> // PATH_MAX
 
 #include "include/client.h"
 #include "include/logger.h"
 #include "include/http.h"
-
-#ifdef _WIN32
-#define PATH_SEPARATOR "\\"
-#else
-#define PATH_SEPARATOR "/"
-#endif
 
 int url_decode(char *s)
 {
@@ -198,15 +187,15 @@ int determine_file_type(const char *resolved_path)
     {
         char test[PATH_MAX];
 
-        snprintf(test, sizeof(test), "%s%sindex.html", path, PATH_SEPARATOR);
+        snprintf(test, sizeof(test), "%s%sindex.html", path, PATH_SEPARATOR_STR);
         if (file_exists(test))
             return TYPE_HTML;
 
-        snprintf(test, sizeof(test), "%s%sindex.php", path, PATH_SEPARATOR);
+        snprintf(test, sizeof(test), "%s%sindex.php", path, PATH_SEPARATOR_STR);
         if (file_exists(test))
             return TYPE_PHP;
 
-        snprintf(test, sizeof(test), "%s%sindex.pl", path, PATH_SEPARATOR);
+        snprintf(test, sizeof(test), "%s%sindex.pl", path, PATH_SEPARATOR_STR);
         if (file_exists(test))
             return TYPE_PERL;
 

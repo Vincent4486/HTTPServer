@@ -14,6 +14,7 @@
 #include <direct.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <fcntl.h>
 
 typedef intptr_t ssize_t;
 
@@ -36,6 +37,34 @@ typedef intptr_t ssize_t;
 /* mkdir wrapper: map to _mkdir which ignores mode */
 #ifndef mkdir
 #define mkdir(p,mode) _mkdir(p)
+#endif
+
+/* Ensure PATH_MAX exists on Windows builds */
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
+
+/* Provide POSIX-like S_ISDIR/S_ISREG on Windows if missing */
+#ifndef S_ISDIR
+#ifdef _S_IFDIR
+#define S_ISDIR(m) (((m) & _S_IFDIR) == _S_IFDIR)
+#else
+#define S_ISDIR(m) 0
+#endif
+#endif
+#ifndef S_ISREG
+#ifdef _S_IFREG
+#define S_ISREG(m) (((m) & _S_IFREG) == _S_IFREG)
+#else
+#define S_ISREG(m) 0
+#endif
+#endif
+
+/* Ensure O_RDONLY is available under the POSIX name */
+#ifndef O_RDONLY
+#ifdef _O_RDONLY
+#define O_RDONLY _O_RDONLY
+#endif
 #endif
 
 /* socket helpers */
