@@ -24,3 +24,6 @@ debug
 *.filters
 ..gitignore.un~
 .gitignore~
+.idea/
+*.iml
+out/

@@ -3,7 +3,7 @@
 # Separates compilation and linking phases for better control
 
 # Configuration variables
-COMPILER=${COMPILER:-clang}
+COMPILER=gcc
 CFLAGS="${CFLAGS:--std=c99 -Wall -Wextra -O2}"
 OUTPUT_DIR="build/objs"
 EXECUTABLE="httpserver"
