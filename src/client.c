@@ -24,12 +24,12 @@ static cache_entry_t cache[CACHE_MAX_ENTRIES];
 static int cache_count = 0;
 
 /* Helper function to handle HTTP request with timing */
-static void handle_http_request_with_timing(int client_fd, const char *content_directory, bool show_ext)
+static void handle_http_request_with_timing(int client_fd, const char *client_ip, const char *content_directory, bool show_ext)
 {
     struct timeval start, end;
     gettimeofday(&start, NULL);
 
-    handle_http_request(client_fd, content_directory, show_ext);
+    handle_http_request(client_fd, client_ip, content_directory, show_ext);
 
     gettimeofday(&end, NULL);
     long seconds = end.tv_sec - start.tv_sec;
@@ -573,7 +573,7 @@ static void handle_accepted_client(int client_fd, struct sockaddr_in client_addr
 #ifdef _WIN32
     /* Windows MSYS: Simplified keep-alive - just handle one request per connection */
     /* Windows socket timeout handling is complex in MSYS, so keep it simple */
-    handle_http_request_with_timing(client_fd, content_directory, show_ext);
+    handle_http_request_with_timing(client_fd, client_ip, content_directory, show_ext);
 #else
     /* POSIX: Full keep-alive support with multiple requests per connection */
     time_t start_time = time(NULL);
@@ -600,7 +600,7 @@ static void handle_accepted_client(int client_fd, struct sockaddr_in client_addr
         tv.tv_usec = 0;
         setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
-        handle_http_request_with_timing(client_fd, content_directory, show_ext);
+        handle_http_request_with_timing(client_fd, client_ip, content_directory, show_ext);
         request_count++;
 
         /* Limit requests per connection to prevent abuse */
@@ -639,6 +639,14 @@ void run_server_loop(int server_fd, const char *content_directory, const bool sh
         int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len);
         if (client_fd < 0)
         {
+            /* EINTR means accept was interrupted by a signal - check if shutdown was requested */
+            if (errno == EINTR)
+            {
+                if (is_shutdown_requested())
+                    break;
+                continue;
+            }
+
             char err_msg[256];
             snprintf(err_msg, sizeof(err_msg), "accept() failed: %s", strerror(errno));
             log_error_code(15, "%s", err_msg);

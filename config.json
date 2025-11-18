@@ -13,5 +13,6 @@
         "/admin.html"
     ],
     "access-log-file": "log/access.log",
-    "enable-access-logging": true
+    "enable-access-logging": true,
+    "thread-pool-size": 4
 }

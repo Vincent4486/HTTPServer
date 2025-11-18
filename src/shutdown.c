@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <stdatomic.h>
+#include <errno.h>
 
 #include "include/shutdown.h"
 #include "include/logger.h"
@@ -22,8 +23,20 @@ static void sigint_handler(int sig)
 
 void init_signal_handlers(void)
 {
-    signal(SIGTERM, sigterm_handler);
-    signal(SIGINT, sigint_handler);
+    struct sigaction sa;
+
+    /* Configure SIGTERM to interrupt blocking calls */
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0; /* Don't use SA_RESTART - let it interrupt accept() */
+    sa.sa_handler = sigterm_handler;
+    sigaction(SIGTERM, &sa, NULL);
+
+    /* Configure SIGINT to interrupt blocking calls */
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sa.sa_handler = sigint_handler;
+    sigaction(SIGINT, &sa, NULL);
+
     log_info("Signal handlers initialized (SIGTERM, SIGINT)");
 }
 

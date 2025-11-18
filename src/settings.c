@@ -321,3 +321,14 @@ const bool get_enable_access_logging(void)
     cJSON *enabled = cJSON_GetObjectItemCaseSensitive(cached_config, "enable-access-logging");
     return cJSON_IsBool(enabled) ? (enabled->valueint != 0) : false;
 }
+
+int get_thread_pool_size(void)
+{
+    load_config();
+    cJSON *size = cJSON_GetObjectItemCaseSensitive(cached_config, "thread-pool-size");
+    if (cJSON_IsNumber(size) && size->valueint > 0)
+    {
+        return size->valueint;
+    }
+    return 4; /* Default to 4 threads */
+}

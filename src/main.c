@@ -17,6 +17,7 @@
 #include "include/metrics.h"
 #include "include/shutdown.h"
 #include "include/access_log.h"
+#include "include/threadpool.h"
 
 int main()
 {
@@ -55,6 +56,7 @@ int main()
     int server_port = get_server_port();
     const char *server_host = get_server_host();
     const bool show_file_ext = get_show_file_extension();
+    int thread_pool_size = get_thread_pool_size();
 
     log_info("Server Directory: ");
     log_info(server_content_directory);
@@ -67,13 +69,30 @@ int main()
         log_info("File Extension Mode: SHOW-EXTENSION");
     else
         log_info("File Extension Mode: HIDE-EXTENSION");
+
+    char thread_msg[64];
+    snprintf(thread_msg, sizeof(thread_msg), "Thread Pool Size: %d", thread_pool_size);
+    log_info(thread_msg);
+
     log_info("Reminder: When changed file extension mode to hide file extensions, files wit extensions will still work, please clear browser history to have the new version as default.");
 
     int server_fd = start_server(server_host, server_port);
-    run_server_loop(server_fd, server_content_directory, show_file_ext);
+
+    /* Create thread pool */
+    threadpool_t *pool = threadpool_create(thread_pool_size);
+    if (!pool)
+    {
+        log_error("Failed to create thread pool");
+        return 1;
+    }
+
+    run_server_loop_with_threadpool(server_fd, server_content_directory, show_file_ext, pool);
 
     /* Cleanup access logging */
     access_log_close();
+    
+    /* Shutdown thread pool */
+    threadpool_shutdown(pool);
 
 #ifdef _WIN32
     WSACleanup();

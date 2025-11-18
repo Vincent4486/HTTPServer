@@ -21,4 +21,7 @@ void free_whitelist_entries(char **entries, int count);
 const char *get_access_log_file(void);
 const bool get_enable_access_logging(void);
 
+/* Thread pool configuration */
+int get_thread_pool_size(void);
+
 #endif

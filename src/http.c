@@ -127,7 +127,7 @@ static int serve_file_cached(int client_fd, const char *file_path, const char *m
     return ret;
 }
 
-void handle_http_request(int client_fd, const char *content_directory, bool show_ext)
+void handle_http_request(int client_fd, const char *client_ip, const char *content_directory, bool show_ext)
 {
     char buffer[16384]; // Increased buffer size for better performance (16KB)
     ssize_t bytes_read = read(client_fd, buffer, sizeof(buffer) - 1);
@@ -148,6 +148,7 @@ void handle_http_request(int client_fd, const char *content_directory, bool show
         if (file_count > 0 && !is_file_whitelisted(path, whitelist_files, file_count))
         {
             send_403(client_fd);
+            access_log_request(client_ip, method, path, "HTTP/1.1", 403, 0, NULL, NULL);
             free_whitelist_entries(whitelist_files, file_count);
             return;
         }
@@ -159,20 +160,25 @@ void handle_http_request(int client_fd, const char *content_directory, bool show
     /* Health check endpoint */
     if (strcmp(path, "/health") == 0 || strcmp(path, "/status") == 0)
     {
+        metrics_update_memory(); /* Update memory stats */
         metrics_t m = metrics_get();
-        char json_response[512];
+        char json_response[768];
         int len = snprintf(json_response, sizeof(json_response),
                            "{"
                            "\"status\":\"ok\","
                            "\"uptime\":%lu,"
                            "\"requests\":%lu,"
                            "\"bytes_served\":%lu,"
-                           "\"avg_response_time_ms\":%.2f"
+                           "\"avg_response_time_ms\":%.2f,"
+                           "\"peak_memory_kb\":%lu,"
+                           "\"cpu_time_ms\":%.2f"
                            "}",
                            metrics_get_uptime(),
                            m.total_requests,
                            m.total_bytes,
-                           m.avg_response_time);
+                           m.avg_response_time,
+                           m.peak_memory_bytes / 1024,
+                           m.total_cpu_time_ms);
 
         char header[256];
         int header_len = snprintf(header, sizeof(header),
@@ -186,6 +192,8 @@ void handle_http_request(int client_fd, const char *content_directory, bool show
             write(client_fd, header, header_len);
         if (len > 0)
             write(client_fd, json_response, len);
+
+        access_log_request(client_ip, method, path, "HTTP/1.1", 200, len, NULL, NULL);
         return;
     }
 
@@ -198,6 +206,7 @@ void handle_http_request(int client_fd, const char *content_directory, bool show
             "Content-Length: 0\r\n"
             "\r\n";
         write(client_fd, not_impl, strlen(not_impl));
+        access_log_request(client_ip, method, path, "HTTP/1.1", 405, 0, NULL, NULL);
         return;
     }
 
