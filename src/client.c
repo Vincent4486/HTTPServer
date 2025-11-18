@@ -16,6 +16,7 @@
 #include "include/http.h"
 #include "include/whitelist.h"
 #include "include/settings.h"
+#include "include/metrics.h"
 
 static cache_entry_t cache[CACHE_MAX_ENTRIES];
 static int cache_count = 0;
@@ -32,9 +33,13 @@ static void handle_http_request_with_timing(int client_fd, const char *content_d
     long seconds = end.tv_sec - start.tv_sec;
     long microseconds = end.tv_usec - start.tv_usec;
     double elapsed = seconds + microseconds * 1e-6;
+    double elapsed_ms = elapsed * 1000.0;
+
+    /* Record metrics (estimate 1KB per request as baseline) */
+    metrics_record_request(1024, elapsed_ms);
 
     char timing_msg[128];
-    snprintf(timing_msg, sizeof(timing_msg), "Request handled in %.3f ms", elapsed * 1000.0);
+    snprintf(timing_msg, sizeof(timing_msg), "Request handled in %.3f ms", elapsed_ms);
     log_info(timing_msg);
 }
 

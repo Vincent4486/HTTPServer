@@ -21,6 +21,7 @@
 #include "include/whitelist.h"
 #include "include/settings.h"
 #include "include/gzip.h"
+#include "include/metrics.h"
 
 /* Serve file with caching support, conditional requests, range requests, and gzip */
 static int serve_file_cached(int client_fd, const char *file_path, const char *method,
@@ -152,6 +153,39 @@ void handle_http_request(int client_fd, const char *content_directory, bool show
 
         if (whitelist_files)
             free_whitelist_entries(whitelist_files, file_count);
+    }
+
+    /* Health check endpoint */
+    if (strcmp(path, "/health") == 0 || strcmp(path, "/status") == 0)
+    {
+        metrics_t m = metrics_get();
+        char json_response[512];
+        int len = snprintf(json_response, sizeof(json_response),
+                           "{"
+                           "\"status\":\"ok\","
+                           "\"uptime\":%lu,"
+                           "\"requests\":%lu,"
+                           "\"bytes_served\":%lu,"
+                           "\"avg_response_time_ms\":%.2f"
+                           "}",
+                           metrics_get_uptime(),
+                           m.total_requests,
+                           m.total_bytes,
+                           m.avg_response_time);
+
+        char header[256];
+        int header_len = snprintf(header, sizeof(header),
+                                  "HTTP/1.1 200 OK\r\n"
+                                  "Content-Type: application/json\r\n"
+                                  "Content-Length: %d\r\n"
+                                  "\r\n",
+                                  len);
+
+        if (header_len > 0)
+            write(client_fd, header, header_len);
+        if (len > 0)
+            write(client_fd, json_response, len);
+        return;
     }
 
     /* Only handle GET and HEAD */

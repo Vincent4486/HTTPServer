@@ -13,6 +13,8 @@
 #include "include/socket.h"
 #include "include/client.h"
 #include "include/logger.h"
+#include "include/validator.h"
+#include "include/metrics.h"
 
 int main()
 {
@@ -27,6 +29,13 @@ int main()
         return 1;
     }
 #endif
+
+    /* Validate configuration */
+    if (!validate_config())
+        return 1;
+
+    /* Initialize metrics tracking */
+    metrics_init();
 
     /* Initialize file cache */
     cache_init();
