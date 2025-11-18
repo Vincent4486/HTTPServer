@@ -11,11 +11,12 @@ LINK_FLAGS=""
 
 # Detect platform and set platform-specific flags
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    LINK_FLAGS=""
+    LINK_FLAGS="-lz"
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-    LINK_FLAGS=""
+    LINK_FLAGS="-lz"
 else
     echo "[WARNING] Unknown platform: $OSTYPE"
+    LINK_FLAGS="-lz"
 fi
 
 # Create output directory for object files

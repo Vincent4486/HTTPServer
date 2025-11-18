@@ -9,7 +9,7 @@ set COMPILER=clang
 set CFLAGS=-std=c99 -Wall -Wextra -O2
 set OUTPUT_DIR=build\objs
 set EXECUTABLE=httpserver.exe
-set LINK_FLAGS=-lws2_32
+set LINK_FLAGS=-lws2_32 -lz
 
 REM Create output directory for object files
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"

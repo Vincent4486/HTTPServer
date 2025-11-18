@@ -149,56 +149,56 @@ static time_t parse_http_date(const char *date_str)
 }
 
 /* Extract If-Modified-Since header value from request buffer */
-static int get_if_modified_since(const char *request_buf, time_t *out_time)
+int get_if_modified_since(const char *request_buf, time_t *out_time)
 {
     const char *header = strstr(request_buf, "If-Modified-Since:");
     if (!header)
         return 0;
-    
+
     header += strlen("If-Modified-Since:");
     while (*header == ' ')
         header++;
-    
+
     char date_str[100];
     const char *end = strchr(header, '\r');
     if (!end)
         end = strchr(header, '\n');
     if (!end)
         return 0;
-    
+
     size_t len = end - header;
     if (len >= sizeof(date_str))
         return 0;
-    
+
     strncpy(date_str, header, len);
     date_str[len] = '\0';
-    
+
     *out_time = parse_http_date(date_str);
     return (*out_time > 0) ? 1 : 0;
 }
 
 /* Parse Range header: "bytes=0-100" or "bytes=100-" */
-static int parse_range_header(const char *request_buf, off_t file_size, off_t *out_start, off_t *out_end)
+int parse_range_header(const char *request_buf, off_t file_size, off_t *out_start, off_t *out_end)
 {
     const char *range = strstr(request_buf, "Range:");
     if (!range)
         return 0;
-    
+
     range += strlen("Range:");
     while (*range == ' ')
         range++;
-    
+
     if (strncmp(range, "bytes=", 6) != 0)
         return 0;
-    
+
     range += 6;
-    
+
     char *end_ptr;
     off_t start = strtoll(range, &end_ptr, 10);
-    
+
     if (*end_ptr != '-')
         return 0;
-    
+
     off_t end;
     if (*(end_ptr + 1) == '\r' || *(end_ptr + 1) == '\n')
     {
@@ -209,16 +209,15 @@ static int parse_range_header(const char *request_buf, off_t file_size, off_t *o
     {
         end = strtoll(end_ptr + 1, NULL, 10);
     }
-    
+
     /* Validate range */
     if (start < 0 || start >= file_size || end < start || end >= file_size)
         return 0;
-    
+
     *out_start = start;
     *out_end = end;
     return 1;
 }
-
 void send_404(int client_fd)
 {
     const char *not_found =
@@ -302,35 +301,6 @@ void send_200_header_keepalive(int client_fd, const char *mime, off_t len)
                               "Content-Type: %s\r\n"
                               "Content-Length: %jd\r\n"
                               "Connection: keep-alive\r\n"
-                              "\r\n",
-                              mime, (intmax_t)len);
-    if (header_len > 0)
-        write(client_fd, header, header_len);
-}
-
-void send_200_header_gzip_keepalive(int client_fd, const char *mime, off_t len)
-{
-    char header[256];
-    int header_len = snprintf(header, sizeof(header),
-                              "HTTP/1.1 200 OK\r\n"
-                              "Content-Type: %s\r\n"
-                              "Content-Length: %jd\r\n"
-                              "Content-Encoding: gzip\r\n"
-                              "Connection: keep-alive\r\n"
-                              "\r\n",
-                              mime, (intmax_t)len);
-    if (header_len > 0)
-        write(client_fd, header, header_len);
-}
-
-void send_200_header_gzip(int client_fd, const char *mime, off_t len)
-{
-    char header[256];
-    int header_len = snprintf(header, sizeof(header),
-                              "HTTP/1.1 200 OK\r\n"
-                              "Content-Type: %s\r\n"
-                              "Content-Length: %jd\r\n"
-                              "Content-Encoding: gzip\r\n"
                               "\r\n",
                               mime, (intmax_t)len);
     if (header_len > 0)

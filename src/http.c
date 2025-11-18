@@ -20,9 +20,10 @@
 #include "include/logger.h"
 #include "include/whitelist.h"
 #include "include/settings.h"
+#include "include/gzip.h"
 
 /* Serve file with caching support, conditional requests, range requests, and gzip */
-static int serve_file_cached(int client_fd, const char *file_path, const char *method, 
+static int serve_file_cached(int client_fd, const char *file_path, const char *method,
                              const char *request_path, bool keep_alive, const char *request_buf)
 {
     struct stat st;
@@ -42,7 +43,7 @@ static int serve_file_cached(int client_fd, const char *file_path, const char *m
 
     off_t file_size = st.st_size;
     const char *mime = get_mime_type(request_path);
-    
+
     /* Check for Range request */
     off_t range_start = 0, range_end = file_size - 1;
     int has_range = parse_range_header(request_buf, file_size, &range_start, &range_end);
@@ -271,7 +272,7 @@ void handle_http_request(int client_fd, const char *content_directory, bool show
             return;
         }
 
-        serve_file_cached(client_fd, abs_candidate, method, path, keep_alive);
+        serve_file_cached(client_fd, abs_candidate, method, path, keep_alive, buffer);
         return;
     }
 
@@ -297,7 +298,7 @@ void handle_http_request(int client_fd, const char *content_directory, bool show
             send_403(client_fd);
             return;
         }
-        serve_file_cached(client_fd, abs_cand, method, "/index.html", keep_alive);
+        serve_file_cached(client_fd, abs_cand, method, "/index.html", keep_alive, buffer);
         return;
     }
 
@@ -385,5 +386,5 @@ void handle_http_request(int client_fd, const char *content_directory, bool show
         return;
     }
 
-    serve_file_cached(client_fd, abs_candidate, method, resolved_req, keep_alive);
+    serve_file_cached(client_fd, abs_candidate, method, resolved_req, keep_alive, buffer);
 }
