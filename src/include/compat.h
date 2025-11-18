@@ -31,12 +31,12 @@ typedef intptr_t ssize_t;
 
 /* realpath -> _fullpath on Windows */
 #ifndef realpath
-#define realpath(N,R) _fullpath((R),(N),_MAX_PATH)
+#define realpath(N, R) _fullpath((R), (N), _MAX_PATH)
 #endif
 
 /* mkdir wrapper: map to _mkdir which ignores mode */
 #ifndef mkdir
-#define mkdir(p,mode) _mkdir(p)
+#define mkdir(p, mode) _mkdir(p)
 #endif
 
 /* Ensure PATH_MAX exists on Windows builds */
@@ -77,6 +77,7 @@ typedef intptr_t ssize_t;
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <limits.h>
 /* sockets for POSIX */
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -89,6 +90,11 @@ typedef off_t compat_off_t;
 
 #define CLOSE_SOCKET(s) close(s)
 #define SOCKET_ERRNO() errno
+
+/* Ensure PATH_MAX is defined */
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 #endif /* _WIN32 */
 
