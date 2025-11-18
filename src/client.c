@@ -19,6 +19,7 @@
 #include "include/metrics.h"
 #include "include/shutdown.h"
 #include "include/access_log.h"
+#include "include/threadpool.h"
 
 static cache_entry_t cache[CACHE_MAX_ENTRIES];
 static int cache_count = 0;
@@ -538,8 +539,8 @@ int join_path(const char *dir, const char *req, char *out, size_t outlen)
 }
 
 /* Handle a single accepted client connection with keep-alive support */
-static void handle_accepted_client(int client_fd, struct sockaddr_in client_addr,
-                                   const char *content_directory, const bool show_ext)
+void handle_accepted_client(int client_fd, struct sockaddr_in client_addr,
+                            const char *content_directory, const bool show_ext)
 {
     char client_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, sizeof(client_ip));
@@ -654,6 +655,57 @@ void run_server_loop(int server_fd, const char *content_directory, const bool sh
         }
 
         handle_accepted_client(client_fd, client_addr, content_directory, show_ext);
+    }
+
+    log_info("Graceful shutdown initiated");
+
+#ifdef _WIN32
+    WSACleanup();
+#endif
+}
+
+void run_server_loop_with_threadpool(int server_fd, const char *content_directory, const bool show_ext, threadpool_t *pool)
+{
+#ifdef _WIN32
+    WSADATA wsa_data;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa_data) != 0)
+    {
+        log_error_code(12, "Failed to initialize Winsock");
+        return;
+    }
+#endif
+
+    /* Main server loop with thread pool - accepts connections and queues them */
+    while (!is_shutdown_requested())
+    {
+        struct sockaddr_in client_addr;
+        socklen_t addr_len = sizeof(client_addr);
+
+        int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len);
+        if (client_fd < 0)
+        {
+            /* EINTR means accept was interrupted by a signal - check if shutdown was requested */
+            if (errno == EINTR)
+            {
+                if (is_shutdown_requested())
+                    break;
+                continue;
+            }
+
+            char err_msg[256];
+            snprintf(err_msg, sizeof(err_msg), "accept() failed: %s", strerror(errno));
+            log_error_code(15, "%s", err_msg);
+            continue;
+        }
+
+        /* Submit work to thread pool instead of handling directly */
+        work_item_t work;
+        work.client_fd = client_fd;
+        work.client_addr = client_addr;
+        work.content_directory = content_directory;
+        work.show_ext = show_ext;
+
+        threadpool_submit(pool, work);
     }
 
     log_info("Graceful shutdown initiated");

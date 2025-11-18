@@ -3,6 +3,8 @@
 #define CLIENT_H
 
 #include <time.h>
+#include <limits.h>
+#include "compat.h"
 
 #define CACHE_MAX_ENTRIES 32
 #define CACHE_MAX_FILE_SIZE (64 * 1024) // 64KB max cached file size
@@ -18,6 +20,16 @@ typedef struct
 } cache_entry_t;
 
 void run_server_loop(int server_fd, const char *content_directory, const bool show_ext);
+
+/* Handle an accepted client connection */
+void handle_accepted_client(int client_fd, struct sockaddr_in client_addr,
+                            const char *content_directory, const bool show_ext);
+
+/* Forward declaration for thread pool */
+typedef struct threadpool threadpool_t;
+
+/* Run server loop with thread pool */
+void run_server_loop_with_threadpool(int server_fd, const char *content_directory, const bool show_ext, threadpool_t *pool);
 int url_decode(char *s);
 void send_404(int client_fd);
 void send_403(int client_fd);

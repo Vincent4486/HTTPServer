@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <string.h>
 
+#include "include/compat.h"
 #include "include/threadpool.h"
 #include "include/logger.h"
 #include "include/client.h"
@@ -95,7 +96,7 @@ threadpool_t *threadpool_create(int num_threads)
     {
         if (pthread_create(&pool->threads[i], NULL, worker_thread, pool) != 0)
         {
-            log_error("Failed to create worker thread");
+            log_error_code(19, "Failed to create worker thread");
             free(pool->threads);
             free(pool);
             return NULL;
@@ -130,7 +131,7 @@ void threadpool_submit(threadpool_t *pool, work_item_t work)
     /* Check queue size limit */
     if (pool->queue_size >= MAX_QUEUE_SIZE)
     {
-        log_error("Work queue full, rejecting connection");
+        log_error_code(20, "Work queue full, rejecting connection");
         pthread_mutex_unlock(&pool->lock);
         free(node);
         close(work.client_fd);

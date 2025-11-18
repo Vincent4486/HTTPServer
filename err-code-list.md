@@ -16,3 +16,6 @@
 #015 ACCEPT FAILED (accept() returned error)
 #016 FAILED TO GET EXECUTABLE PATH (GetModuleFileNameA)
 #017 EXECUTABLE PATH TOO LONG (_NSGetExecutablePath)
+#018 FAILED TO CREATE THREAD POOL
+#019 FAILED TO CREATE WORKER THREAD
+#020 WORK QUEUE FULL (rejecting connection - thread pool busy)

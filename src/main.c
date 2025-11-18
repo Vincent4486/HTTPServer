@@ -82,7 +82,7 @@ int main()
     threadpool_t *pool = threadpool_create(thread_pool_size);
     if (!pool)
     {
-        log_error("Failed to create thread pool");
+        log_error_code(18, "Failed to create thread pool");
         return 1;
     }
 
@@ -90,7 +90,7 @@ int main()
 
     /* Cleanup access logging */
     access_log_close();
-    
+
     /* Shutdown thread pool */
     threadpool_shutdown(pool);
 
