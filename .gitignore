@@ -27,3 +27,4 @@ debug
 .idea/
 *.iml
 out/
+log/

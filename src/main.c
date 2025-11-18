@@ -15,6 +15,8 @@
 #include "include/logger.h"
 #include "include/validator.h"
 #include "include/metrics.h"
+#include "include/shutdown.h"
+#include "include/access_log.h"
 
 int main()
 {
@@ -30,12 +32,21 @@ int main()
     }
 #endif
 
+    /* Initialize signal handlers for graceful shutdown */
+    init_signal_handlers();
+
     /* Validate configuration */
     if (!validate_config())
         return 1;
 
     /* Initialize metrics tracking */
     metrics_init();
+
+    /* Initialize access logging if enabled */
+    if (get_enable_access_logging())
+    {
+        access_log_init(get_access_log_file());
+    }
 
     /* Initialize file cache */
     cache_init();
@@ -60,6 +71,9 @@ int main()
 
     int server_fd = start_server(server_host, server_port);
     run_server_loop(server_fd, server_content_directory, show_file_ext);
+
+    /* Cleanup access logging */
+    access_log_close();
 
 #ifdef _WIN32
     WSACleanup();

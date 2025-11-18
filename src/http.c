@@ -22,6 +22,7 @@
 #include "include/settings.h"
 #include "include/gzip.h"
 #include "include/metrics.h"
+#include "include/access_log.h"
 
 /* Serve file with caching support, conditional requests, range requests, and gzip */
 static int serve_file_cached(int client_fd, const char *file_path, const char *method,

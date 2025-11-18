@@ -17,4 +17,8 @@ char **get_whitelist_ips(int *out_count);
 char **get_whitelist_files(int *out_count);
 void free_whitelist_entries(char **entries, int count);
 
+/* Access logging configuration accessors */
+const char *get_access_log_file(void);
+const bool get_enable_access_logging(void);
+
 #endif

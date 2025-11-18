@@ -11,5 +11,7 @@
         "/",
         "/index.html",
         "/admin.html"
-    ]
+    ],
+    "access-log-file": "log/access.log",
+    "enable-access-logging": true
 }

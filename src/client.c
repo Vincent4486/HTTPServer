@@ -17,6 +17,8 @@
 #include "include/whitelist.h"
 #include "include/settings.h"
 #include "include/metrics.h"
+#include "include/shutdown.h"
+#include "include/access_log.h"
 
 static cache_entry_t cache[CACHE_MAX_ENTRIES];
 static int cache_count = 0;
@@ -628,8 +630,8 @@ void run_server_loop(int server_fd, const char *content_directory, const bool sh
     }
 #endif
 
-    /* Main server loop - only infinite loop allowed per requirements */
-    while (1)
+    /* Main server loop with graceful shutdown support */
+    while (!is_shutdown_requested())
     {
         struct sockaddr_in client_addr;
         socklen_t addr_len = sizeof(client_addr);
@@ -645,6 +647,8 @@ void run_server_loop(int server_fd, const char *content_directory, const bool sh
 
         handle_accepted_client(client_fd, client_addr, content_directory, show_ext);
     }
+
+    log_info("Graceful shutdown initiated");
 
 #ifdef _WIN32
     WSACleanup();

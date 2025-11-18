@@ -303,3 +303,21 @@ void free_whitelist_entries(char **entries, int count)
         free(entries[i]);
     free(entries);
 }
+
+const char *get_access_log_file(void)
+{
+    load_config();
+    cJSON *log_file = cJSON_GetObjectItemCaseSensitive(cached_config, "access-log-file");
+    if (!cJSON_IsString(log_file) || log_file->valuestring == NULL)
+    {
+        return "log/access.log"; /* Default path */
+    }
+    return log_file->valuestring;
+}
+
+const bool get_enable_access_logging(void)
+{
+    load_config();
+    cJSON *enabled = cJSON_GetObjectItemCaseSensitive(cached_config, "enable-access-logging");
+    return cJSON_IsBool(enabled) ? (enabled->valueint != 0) : false;
+}
