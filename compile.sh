@@ -25,7 +25,7 @@ echo "[INFO] Compiling C source files..."
 
 # Compile each source file to object files
 find src -name "*.c" | while read SRCFILE; do
-    OBJFILE="$OUTPUT_DIR/$(basename "$SRCFILE" .c).obj"
+    OBJFILE="$OUTPUT_DIR/$(basename "$SRCFILE" .c).o"
     echo "Compiling $(basename "$SRCFILE")..."
     $COMPILER $CFLAGS -c "$SRCFILE" -o "$OBJFILE"
     if [ $? -ne 0 ]; then
@@ -37,7 +37,7 @@ done
 echo "[INFO] Linking object files..."
 
 # Link all object files
-OBJ_FILES=$(find "$OUTPUT_DIR" -name "*.obj" -type f)
+OBJ_FILES=$(find "$OUTPUT_DIR" -name "*.o" -type f)
 $COMPILER $OBJ_FILES $LINK_FLAGS -o "$EXECUTABLE"
 
 if [ $? -eq 0 ]; then

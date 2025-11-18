@@ -75,7 +75,7 @@ char *get_config_path()
     {
         char err_msg[128];
         snprintf(err_msg, sizeof(err_msg), "readlink failed: %s", strerror(errno));
-            log_error_code(8, "%s", err_msg); /* #008 */
+        log_error_code(8, "%s", err_msg); /* #008 */
         exit(EXIT_FAILURE);
     }
     path[len] = '\0';
@@ -99,7 +99,7 @@ static void load_config()
     {
         char err_msg[256];
         snprintf(err_msg, sizeof(err_msg), "Failed to open config.json: %s", strerror(errno));
-            log_error_code(9, "%s", err_msg); /* #009 */
+        log_error_code(9, "%s", err_msg); /* #009 */
         exit(EXIT_FAILURE);
     }
 
@@ -110,7 +110,7 @@ static void load_config()
     char *data = malloc(length + 1);
     if (!data)
     {
-            log_error_code(11, "Memory allocation failed while reading config"); /* #011 */
+        log_error_code(11, "Memory allocation failed while reading config"); /* #011 */
         fclose(file);
         exit(EXIT_FAILURE);
     }
@@ -126,7 +126,7 @@ static void load_config()
     {
         char err_msg[256];
         snprintf(err_msg, sizeof(err_msg), "Error parsing JSON: %s", cJSON_GetErrorPtr());
-            log_error_code(10, "%s", err_msg); /* #010 */
+        log_error_code(10, "%s", err_msg); /* #010 */
         exit(EXIT_FAILURE);
     }
 }
@@ -137,7 +137,7 @@ const int get_server_port()
     cJSON *port = cJSON_GetObjectItemCaseSensitive(cached_config, "server-port");
     if (!cJSON_IsNumber(port))
     {
-           log_error_code(2, "Port not found or not a number in config.json"); /* #002 */
+        log_error_code(2, "Port not found or not a number in config.json"); /* #002 */
         exit(EXIT_FAILURE);
     }
     return port->valueint;
@@ -149,7 +149,7 @@ const char *get_server_directory()
     cJSON *dir = cJSON_GetObjectItemCaseSensitive(cached_config, "server-content-directory");
     if (!cJSON_IsString(dir) || dir->valuestring == NULL)
     {
-            log_error_code(3, "Directory not found or not a string in config.json"); /* #003 */
+        log_error_code(3, "Directory not found or not a string in config.json"); /* #003 */
         exit(EXIT_FAILURE);
     }
 
@@ -174,7 +174,7 @@ const char *get_server_directory()
             {
                 char err_msg[256];
                 snprintf(err_msg, sizeof(err_msg), "Failed to create default directory: %s", default_dir);
-                    log_error_code(14, "%s", err_msg); /* #014 */
+                log_error_code(14, "%s", err_msg); /* #014 */
                 exit(EXIT_FAILURE);
             }
             else
@@ -191,7 +191,7 @@ const char *get_server_directory()
     {
         char err_msg[256];
         snprintf(err_msg, sizeof(err_msg), "Directory does not exist: %s", path);
-            log_error_code(1, "%s", err_msg); /* #001 */
+        log_error_code(1, "%s", err_msg); /* #001 */
         exit(EXIT_FAILURE);
     }
 
@@ -215,4 +215,91 @@ const bool get_show_file_extension()
     load_config();
     cJSON *show_ext = cJSON_GetObjectItemCaseSensitive(cached_config, "show-file-extension");
     return cJSON_IsBool(show_ext) ? (show_ext->valueint != 0) : false;
+}
+
+const bool get_whitelist_enabled()
+{
+    load_config();
+    cJSON *enabled = cJSON_GetObjectItemCaseSensitive(cached_config, "whitelist-enabled");
+    return cJSON_IsBool(enabled) ? (enabled->valueint != 0) : false;
+}
+
+char **get_whitelist_ips(int *out_count)
+{
+    if (!out_count)
+        return NULL;
+
+    load_config();
+    cJSON *ips = cJSON_GetObjectItemCaseSensitive(cached_config, "whitelist-ips");
+
+    *out_count = 0;
+    if (!cJSON_IsArray(ips))
+        return NULL;
+
+    int count = cJSON_GetArraySize(ips);
+    if (count <= 0)
+        return NULL;
+
+    char **entries = malloc(count * sizeof(char *));
+    if (!entries)
+        return NULL;
+
+    int valid_count = 0;
+    for (int i = 0; i < count; i++)
+    {
+        cJSON *item = cJSON_GetArrayItem(ips, i);
+        if (cJSON_IsString(item) && item->valuestring)
+        {
+            entries[valid_count] = strdup(item->valuestring);
+            if (entries[valid_count])
+                valid_count++;
+        }
+    }
+
+    *out_count = valid_count;
+    return valid_count > 0 ? entries : NULL;
+}
+
+char **get_whitelist_files(int *out_count)
+{
+    if (!out_count)
+        return NULL;
+
+    load_config();
+    cJSON *files = cJSON_GetObjectItemCaseSensitive(cached_config, "whitelist-files");
+
+    *out_count = 0;
+    if (!cJSON_IsArray(files))
+        return NULL;
+
+    int count = cJSON_GetArraySize(files);
+    if (count <= 0)
+        return NULL;
+
+    char **entries = malloc(count * sizeof(char *));
+    if (!entries)
+        return NULL;
+
+    int valid_count = 0;
+    for (int i = 0; i < count; i++)
+    {
+        cJSON *item = cJSON_GetArrayItem(files, i);
+        if (cJSON_IsString(item) && item->valuestring)
+        {
+            entries[valid_count] = strdup(item->valuestring);
+            if (entries[valid_count])
+                valid_count++;
+        }
+    }
+
+    *out_count = valid_count;
+    return valid_count > 0 ? entries : NULL;
+}
+void free_whitelist_entries(char **entries, int count)
+{
+    if (!entries)
+        return;
+    for (int i = 0; i < count; i++)
+        free(entries[i]);
+    free(entries);
 }

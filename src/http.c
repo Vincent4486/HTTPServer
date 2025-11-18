@@ -1,11 +1,12 @@
-#include <stdio.h>      // printf, perror
-#include <stdlib.h>     // exit, EXIT_FAILURE
-#include <string.h>     // strlen, strcpy, memset
-#include <stdbool.h>    // bool, true, fals
-#include <stdint.h>     // intmax_t
-#include <inttypes.h>   // PRIdMAX
-#include <ctype.h>      // isxdigit
-#include <limits.h>     // PATH_MAX
+#include <stdio.h>    // printf, perror
+#include <stdlib.h>   // exit, EXIT_FAILURE
+#include <string.h>   // strlen, strcpy, memset
+#include <stdbool.h>  // bool, true, fals
+#include <stdint.h>   // intmax_t
+#include <inttypes.h> // PRIdMAX
+#include <ctype.h>    // isxdigit
+#include <limits.h>   // PATH_MAX
+#include <time.h>     // time
 
 #include "include/compat.h"
 
@@ -17,24 +18,139 @@
 
 #include "include/client.h"
 #include "include/logger.h"
+#include "include/whitelist.h"
+#include "include/settings.h"
+
+/* Serve file with caching support, conditional requests, range requests, and gzip */
+static int serve_file_cached(int client_fd, const char *file_path, const char *method, 
+                             const char *request_path, bool keep_alive, const char *request_buf)
+{
+    struct stat st;
+    if (stat(file_path, &st) != 0 || !S_ISREG(st.st_mode))
+        return -1;
+
+    /* Check If-Modified-Since header */
+    time_t if_modified_since = 0;
+    if (get_if_modified_since(request_buf, &if_modified_since))
+    {
+        if (if_modified_since >= st.st_mtime)
+        {
+            send_304(client_fd);
+            return 0;
+        }
+    }
+
+    off_t file_size = st.st_size;
+    const char *mime = get_mime_type(request_path);
+    
+    /* Check for Range request */
+    off_t range_start = 0, range_end = file_size - 1;
+    int has_range = parse_range_header(request_buf, file_size, &range_start, &range_end);
+
+    /* Check cache first for full file */
+    if (!has_range)
+    {
+        cache_entry_t *cached = cache_get(file_path);
+        if (cached && strcmp(method, "HEAD") != 0)
+        {
+            /* Serve from cache */
+            if (keep_alive)
+                send_200_header_keepalive(client_fd, cached->mime_type, cached->size);
+            else
+                send_200_header(client_fd, cached->mime_type, cached->size);
+
+            if (write_buffer_fully(client_fd, cached->data, cached->size) != 0)
+                return -1;
+            return 0;
+        }
+    }
+
+    int fd = open(file_path, O_RDONLY);
+    if (fd < 0)
+        return -1;
+
+    /* Send appropriate headers */
+    if (has_range)
+    {
+        send_206_header(client_fd, mime, range_start, range_end, file_size);
+        if (strcmp(method, "HEAD") == 0)
+        {
+            close(fd);
+            return 0;
+        }
+        /* Seek to range start and stream range */
+        lseek(fd, range_start, SEEK_SET);
+        off_t range_size = range_end - range_start + 1;
+        return stream_file_fd(client_fd, fd, range_size);
+    }
+
+    /* Full file response */
+    if (keep_alive)
+        send_200_header_keepalive(client_fd, mime, file_size);
+    else
+        send_200_header(client_fd, mime, file_size);
+
+    if (strcmp(method, "HEAD") == 0)
+    {
+        close(fd);
+        return 0;
+    }
+
+    /* Try to cache small files */
+    if (file_size <= CACHE_MAX_FILE_SIZE && file_size > 0)
+    {
+        char *buffer = malloc(file_size);
+        if (buffer)
+        {
+            ssize_t bytes_read = read(fd, buffer, file_size);
+            if (bytes_read == file_size)
+            {
+                cache_put(file_path, buffer, file_size, mime, st.st_mtime);
+                if (write_buffer_fully(client_fd, buffer, file_size) == 0)
+                {
+                    free(buffer);
+                    close(fd);
+                    return 0;
+                }
+            }
+            free(buffer);
+        }
+        /* Fall back to streaming if caching failed */
+        lseek(fd, 0, SEEK_SET);
+    }
+
+    int ret = stream_file_fd(client_fd, fd, file_size);
+    close(fd);
+    return ret;
+}
 
 void handle_http_request(int client_fd, const char *content_directory, bool show_ext)
 {
-    // Function implementation goes here
-    char buffer[4096];
+    char buffer[16384]; // Increased buffer size for better performance (16KB)
     ssize_t bytes_read = read(client_fd, buffer, sizeof(buffer) - 1);
     if (bytes_read <= 0)
-    {
-        close(client_fd);
         return;
-    }
     buffer[bytes_read] = '\0';
 
     char method[16] = {0}, path[1024] = {0};
     if (sscanf(buffer, "%15s %1023s", method, path) != 2)
-    {
-        close(client_fd);
         return;
+
+    /* Check file whitelist if enabled */
+    if (get_whitelist_enabled())
+    {
+        int file_count = 0;
+        char **whitelist_files = get_whitelist_files(&file_count);
+
+        if (file_count > 0 && !is_file_whitelisted(path, whitelist_files, file_count))
+        {
+            send_403(client_fd);
+            free_whitelist_entries(whitelist_files, file_count);
+            return;
+        }
+
+        if (whitelist_files)
+            free_whitelist_entries(whitelist_files, file_count);
     }
 
     /* Only handle GET and HEAD */
@@ -46,15 +162,17 @@ void handle_http_request(int client_fd, const char *content_directory, bool show
             "Content-Length: 0\r\n"
             "\r\n";
         write(client_fd, not_impl, strlen(not_impl));
-        close(client_fd);
         return;
     }
+
+    /* Check for Connection: keep-alive header */
+    bool keep_alive = (strstr(buffer, "Connection: keep-alive") != NULL ||
+                       strstr(buffer, "Connection: Keep-Alive") != NULL);
 
     /* Basic reject for raw traversal tokens before decoding */
     if (strstr(path, ".."))
     {
         send_403(client_fd);
-        close(client_fd);
         return;
     }
 
@@ -62,7 +180,6 @@ void handle_http_request(int client_fd, const char *content_directory, bool show
     if (url_decode(path) != 0)
     {
         send_404(client_fd);
-        close(client_fd);
         return;
     }
 
@@ -70,18 +187,13 @@ void handle_http_request(int client_fd, const char *content_directory, bool show
     if (path[0] != '/')
     {
         send_404(client_fd);
-        close(client_fd);
         return;
     }
 
     /* canonicalize content_directory absolute path */
     char abs_content[PATH_MAX];
     if (!realpath(content_directory, abs_content))
-    {
-        /* can't resolve content dir -> fail closed */
-        close(client_fd);
         return;
-    }
 
     /* SHOW-EXTENSION mode */
     if (show_ext)
@@ -90,7 +202,6 @@ void handle_http_request(int client_fd, const char *content_directory, bool show
         if (strcmp(path, "/") == 0)
         {
             send_301_location(client_fd, "/index.html");
-            close(client_fd);
             return;
         }
 
@@ -99,12 +210,10 @@ void handle_http_request(int client_fd, const char *content_directory, bool show
         if (join_path(content_directory, path, candidate, sizeof(candidate)) != 0)
         {
             send_404(client_fd);
-            close(client_fd);
             return;
         }
 
-        /* If candidate is a directory, try index.html inside it.
-           If candidate is a file, serve it. */
+        /* If candidate is a directory, try index.html inside it */
         struct stat st;
         if (stat(candidate, &st) == 0 && S_ISDIR(st.st_mode))
         {
@@ -115,232 +224,112 @@ void handle_http_request(int client_fd, const char *content_directory, bool show
                 char with_slash[1024];
                 snprintf(with_slash, sizeof(with_slash), "%s/", path);
                 send_301_location(client_fd, with_slash);
-                close(client_fd);
                 return;
             }
             /* append index.html and try that */
             size_t n = snprintf(candidate, sizeof(candidate), "%s%sindex.html",
                                 content_directory,
                                 path[0] == '/' ? path + 1 : path);
-            if (n >= sizeof(candidate))
+            if (n >= sizeof(candidate) || stat(candidate, &st) != 0 || !S_ISREG(st.st_mode))
             {
                 send_404(client_fd);
-                close(client_fd);
-                return;
-            }
-            if (stat(candidate, &st) != 0 || !S_ISREG(st.st_mode))
-            {
-                send_404(client_fd);
-                close(client_fd);
                 return;
             }
         }
         else if (stat(candidate, &st) != 0 || !S_ISREG(st.st_mode))
         {
-            /* If literal path not found, also try appending .html (helpful if client requested /foo and
-               you want to serve /foo.html in show_ext mode) */
+            /* If literal path not found, try appending .html */
             if (strrchr(path, '.') == NULL)
             {
                 char alt[PATH_MAX];
-                if (snprintf(alt, sizeof(alt), "%s%s.html", content_directory, path) < (int)sizeof(alt))
+                if (snprintf(alt, sizeof(alt), "%s%s.html", content_directory, path) < (int)sizeof(alt) &&
+                    stat(alt, &st) == 0 && S_ISREG(st.st_mode))
                 {
-                    if (stat(alt, &st) == 0 && S_ISREG(st.st_mode))
-                    {
-                        strncpy(candidate, alt, sizeof(candidate) - 1);
-                        candidate[sizeof(candidate) - 1] = '\0';
-                    }
-                    else
-                    {
-                        send_404(client_fd);
-                        close(client_fd);
-                        return;
-                    }
+                    strncpy(candidate, alt, sizeof(candidate) - 1);
+                    candidate[sizeof(candidate) - 1] = '\0';
                 }
                 else
                 {
                     send_404(client_fd);
-                    close(client_fd);
                     return;
                 }
             }
             else
             {
                 send_404(client_fd);
-                close(client_fd);
                 return;
             }
         }
 
         /* canonicalize candidate and ensure it's under content_directory */
         char abs_candidate[PATH_MAX];
-        if (!realpath(candidate, abs_candidate))
-        {
-            send_404(client_fd);
-            close(client_fd);
-            return;
-        }
-        if (strncmp(abs_candidate, abs_content, strlen(abs_content)) != 0 ||
+        if (!realpath(candidate, abs_candidate) ||
+            strncmp(abs_candidate, abs_content, strlen(abs_content)) != 0 ||
             (abs_candidate[strlen(abs_content)] != '/' && abs_candidate[strlen(abs_content)] != '\0'))
         {
             send_403(client_fd);
-            close(client_fd);
             return;
         }
 
-        int fd = open(abs_candidate, O_RDONLY);
-        if (fd < 0)
-        {
-            send_404(client_fd);
-            close(client_fd);
-            return;
-        }
-        if (fstat(fd, &st) != 0)
-        {
-            close(fd);
-            close(client_fd);
-            return;
-        }
-        off_t file_size = st.st_size;
-
-        const char *mime = get_mime_type(path);
-        if (strcmp(method, "HEAD") != 0)
-            send_200_header(client_fd, mime, file_size);
-        else
-        {
-            /* HEAD should send headers only */
-            send_200_header(client_fd, mime, file_size);
-            close(fd);
-            close(client_fd);
-            return;
-        }
-
-        if (stream_file_fd(client_fd, fd, file_size) != 0)
-        {
-            close(fd);
-            close(client_fd);
-            return;
-        }
-        close(fd);
-        close(client_fd);
+        serve_file_cached(client_fd, abs_candidate, method, path, keep_alive);
         return;
     }
 
     /* HIDE-EXTENSION mode */
-    /* If request is "/": serve /index.html (no redirect) */
     if (strcmp(path, "/") == 0)
     {
         char cand[PATH_MAX];
         if (join_path(content_directory, "/index.html", cand, sizeof(cand)) != 0)
         {
             send_404(client_fd);
-            close(client_fd);
             return;
         }
         struct stat st;
         if (stat(cand, &st) != 0 || !S_ISREG(st.st_mode))
         {
             send_404(client_fd);
-            close(client_fd);
             return;
         }
         char abs_cand[PATH_MAX];
-        if (!realpath(cand, abs_cand))
-        {
-            send_404(client_fd);
-            close(client_fd);
-            return;
-        }
-        char abs_content2[PATH_MAX];
-        if (!realpath(content_directory, abs_content2))
-        {
-            close(client_fd);
-            return;
-        }
-        if (strncmp(abs_cand, abs_content2, strlen(abs_content2)) != 0)
+        if (!realpath(cand, abs_cand) ||
+            strncmp(abs_cand, abs_content, strlen(abs_content)) != 0)
         {
             send_403(client_fd);
-            close(client_fd);
             return;
         }
-
-        int fd = open(abs_cand, O_RDONLY);
-        if (fd < 0)
-        {
-            send_404(client_fd);
-            close(client_fd);
-            return;
-        }
-        if (fstat(fd, &st) != 0)
-        {
-            close(fd);
-            close(client_fd);
-            return;
-        }
-        off_t file_size = st.st_size;
-        const char *mime = get_mime_type("/index.html");
-        if (strcmp(method, "HEAD") != 0)
-            send_200_header(client_fd, mime, file_size);
-        else
-        {
-            send_200_header(client_fd, mime, file_size);
-            close(fd);
-            close(client_fd);
-            return;
-        }
-        if (stream_file_fd(client_fd, fd, file_size) != 0)
-        {
-            close(fd);
-            close(client_fd);
-            return;
-        }
-        close(fd);
-        close(client_fd);
+        serve_file_cached(client_fd, abs_cand, method, "/index.html", keep_alive);
         return;
     }
 
-    /* Normalize path: strip trailing slash (but remember if it had slash) */
-    bool had_trailing_slash = false;
+    /* Normalize path: strip trailing slash */
     size_t plen = strlen(path);
     if (plen > 1 && path[plen - 1] == '/')
-    {
-        had_trailing_slash = true;
         path[plen - 1] = '\0';
-    }
 
-    /* If request explicitly ends with .html, check if clean path (with trailing slash) should redirect.
-       Only redirect when the clean target exists as directory/index.html (preserves previous intent). */
+    /* If request explicitly ends with .html, check if clean path should redirect */
     const char *ext = strrchr(path, '.');
     if (ext && strcmp(ext, ".html") == 0)
     {
-        /* build filesystem path to requested .html */
         char requested_fs[PATH_MAX];
         if (join_path(content_directory, path, requested_fs, sizeof(requested_fs)) == 0)
         {
             struct stat rst;
             if (stat(requested_fs, &rst) == 0 && S_ISREG(rst.st_mode))
             {
-                /* compute clean path (remove .html) and test for directory/index.html */
-                size_t base_len = (size_t)(ext - path); /* length of "/name" */
+                size_t base_len = (size_t)(ext - path);
                 char clean_path[1024];
                 if (base_len == 0)
-                    strncpy(clean_path, "/", sizeof(clean_path));
+                    strcpy(clean_path, "/");
                 else
                 {
-                    size_t copy_len = base_len;
-                    if (copy_len >= sizeof(clean_path) - 2)
-                        copy_len = sizeof(clean_path) - 2;
+                    size_t copy_len = base_len < sizeof(clean_path) - 2 ? base_len : sizeof(clean_path) - 2;
                     memcpy(clean_path, path, copy_len);
                     clean_path[copy_len] = '\0';
-                    /* ensure trailing slash on clean path used in redirect */
                     size_t rl = strlen(clean_path);
-                    if (rl == 0 || clean_path[rl - 1] != '/')
-                    {
-                        if (rl + 1 < sizeof(clean_path))
-                            strcat(clean_path, "/");
-                    }
+                    if (rl > 0 && clean_path[rl - 1] != '/')
+                        strcat(clean_path, "/");
                 }
 
-                /* candidate = content_directory + clean_path + "index.html" */
                 char candidate_fs[PATH_MAX];
                 if (snprintf(candidate_fs, sizeof(candidate_fs), "%s%sindex.html", content_directory,
                              clean_path[0] == '/' ? clean_path + 1 : clean_path) < (int)sizeof(candidate_fs))
@@ -348,25 +337,21 @@ void handle_http_request(int client_fd, const char *content_directory, bool show
                     struct stat cst;
                     if (stat(candidate_fs, &cst) == 0 && S_ISREG(cst.st_mode))
                     {
-                        /* redirect to clean_path (with trailing slash) */
                         send_301_location(client_fd, clean_path);
-                        close(client_fd);
                         return;
                     }
                 }
-                /* if candidate doesn't exist, fall through to serve requested .html */
             }
         }
     }
 
-    /* If request has no extension, try appending .html */
+    /* Build final filesystem path */
     char resolved_req[PATH_MAX];
     if (strrchr(path, '.') == NULL)
     {
         if (snprintf(resolved_req, sizeof(resolved_req), "%s.html", path) >= (int)sizeof(resolved_req))
         {
             send_404(client_fd);
-            close(client_fd);
             return;
         }
     }
@@ -376,28 +361,20 @@ void handle_http_request(int client_fd, const char *content_directory, bool show
         resolved_req[sizeof(resolved_req) - 1] = '\0';
     }
 
-    /* Build candidate FS path */
     char candidate_fs[PATH_MAX];
     if (join_path(content_directory, resolved_req, candidate_fs, sizeof(candidate_fs)) != 0)
     {
         send_404(client_fd);
-        close(client_fd);
         return;
     }
 
-    /* canonicalize candidate and ensure it's inside content_directory */
+    /* Security check: ensure path is inside content_directory */
     char abs_candidate[PATH_MAX];
-    if (!realpath(candidate_fs, abs_candidate))
-    {
-        send_404(client_fd);
-        close(client_fd);
-        return;
-    }
-    if (strncmp(abs_candidate, abs_content, strlen(abs_content)) != 0 ||
+    if (!realpath(candidate_fs, abs_candidate) ||
+        strncmp(abs_candidate, abs_content, strlen(abs_content)) != 0 ||
         (abs_candidate[strlen(abs_content)] != '/' && abs_candidate[strlen(abs_content)] != '\0'))
     {
         send_403(client_fd);
-        close(client_fd);
         return;
     }
 
@@ -405,36 +382,8 @@ void handle_http_request(int client_fd, const char *content_directory, bool show
     if (stat(abs_candidate, &st) != 0 || !S_ISREG(st.st_mode))
     {
         send_404(client_fd);
-        close(client_fd);
         return;
     }
 
-    int fd = open(abs_candidate, O_RDONLY);
-    if (fd < 0)
-    {
-        send_404(client_fd);
-        close(client_fd);
-        return;
-    }
-    off_t file_size = st.st_size;
-
-    const char *mime = get_mime_type(resolved_req);
-    if (strcmp(method, "HEAD") != 0)
-        send_200_header(client_fd, mime, file_size);
-    else
-    {
-        send_200_header(client_fd, mime, file_size);
-        close(fd);
-        close(client_fd);
-        return;
-    }
-
-    if (stream_file_fd(client_fd, fd, file_size) != 0)
-    {
-        close(fd);
-        close(client_fd);
-        return;
-    }
-    close(fd);
-    close(client_fd);
+    serve_file_cached(client_fd, abs_candidate, method, resolved_req, keep_alive);
 }

@@ -28,6 +28,9 @@ int main()
     }
 #endif
 
+    /* Initialize file cache */
+    cache_init();
+
     const char *server_content_directory = get_server_directory();
     int server_port = get_server_port();
     const char *server_host = get_server_host();

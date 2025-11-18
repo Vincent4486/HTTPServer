@@ -2,5 +2,14 @@
     "server-port": 2555,
     "server-content-directory": "default",
     "server-host": "any",
-    "show-file-extension": false
+    "show-file-extension": false,
+    "whitelist-enabled": false,
+    "whitelist-ips": [
+        "127.0.0.1"
+    ],
+    "whitelist-files": [
+        "/",
+        "/index.html",
+        "/admin.html"
+    ]
 }

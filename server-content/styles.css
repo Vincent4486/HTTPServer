@@ -1,0 +1,253 @@
+/* Global Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
+    color: #333;
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* Header */
+header {
+    background: linear-gradient(135deg, #2f855a 0%, #22543d 100%);
+    color: white;
+    padding: 40px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    animation: slideDown 0.6s ease-out;
+}
+
+header h1 {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+}
+
+header p {
+    font-size: 1.1em;
+    opacity: 0.95;
+}
+
+/* Main Content */
+main {
+    max-width: 900px;
+    margin: 50px auto;
+    padding: 0 20px;
+}
+
+/* Status Boxes */
+.status-box {
+    background-color: #fff;
+    border-left: 6px solid #38b2ac;
+    padding: 30px;
+    margin-bottom: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    animation: fadeInUp 0.7s ease-out;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.status-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.status-box.details {
+    border-left-color: #38b2ac;
+    background: linear-gradient(135deg, #f0fff9 0%, #e6fffa 100%);
+}
+
+.status-box.usage {
+    border-left-color: #3182ce;
+    background: linear-gradient(135deg, #ebf8ff 0%, #e6f3ff 100%);
+}
+
+.status-box.debug {
+    border-left-color: #ed8936;
+    background: linear-gradient(135deg, #fffaf0 0%, #fff5e6 100%);
+}
+
+.status-box h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 1.5em;
+    font-weight: 600;
+}
+
+.status-box.details h2 {
+    color: #2c7a7b;
+}
+
+.status-box.usage h2 {
+    color: #2c5282;
+}
+
+.status-box.debug h2 {
+    color: #7c2d12;
+}
+
+/* Info List */
+.info-list {
+    list-style: none;
+    padding-left: 0;
+}
+
+.info-list li {
+    margin-bottom: 15px;
+    padding-left: 30px;
+    position: relative;
+    transition: color 0.3s ease;
+}
+
+.info-list li:before {
+    content: "▸";
+    position: absolute;
+    left: 0;
+    font-weight: bold;
+    color: #38b2ac;
+    font-size: 1.2em;
+}
+
+.info-list li:hover {
+    color: #38b2ac;
+}
+
+.info-list strong {
+    color: #1a202c;
+    font-weight: 600;
+}
+
+code {
+    background-color: #edf2f7;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: "Monaco", "Courier New", monospace;
+    color: #d63031;
+    font-size: 0.95em;
+    transition: background-color 0.3s ease;
+}
+
+code:hover {
+    background-color: #e2e8f0;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    font-size: 0.9em;
+    color: #718096;
+    margin-top: 80px;
+    padding: 30px 20px;
+    border-top: 1px solid #e2e8f0;
+    animation: fadeIn 1s ease-out 0.5s backwards;
+}
+
+/* Status Indicator */
+.status-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #48bb78;
+    margin-right: 8px;
+    animation: pulse 2s infinite;
+}
+
+/* Animations */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(72, 187, 120, 0.7);
+    }
+
+    50% {
+        box-shadow: 0 0 0 8px rgba(72, 187, 120, 0);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    header {
+        padding: 30px 20px;
+    }
+
+    header h1 {
+        font-size: 2em;
+    }
+
+    main {
+        margin: 30px auto;
+    }
+
+    .status-box {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .status-box h2 {
+        font-size: 1.3em;
+    }
+
+    .info-list li {
+        margin-bottom: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    header h1 {
+        font-size: 1.5em;
+    }
+
+    header p {
+        font-size: 0.95em;
+    }
+
+    .status-box {
+        padding: 15px;
+    }
+
+    .status-box h2 {
+        font-size: 1.1em;
+    }
+}

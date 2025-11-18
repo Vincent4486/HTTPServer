@@ -2,9 +2,19 @@
 #ifndef SETTINGS_H
 #define SETTINGS_H
 
+#include <stdbool.h>
+
 const char *get_server_directory();   // ✅ correct declaration
 const int get_server_port();          // ✅ correct declaration
 const char *get_server_host();        // ✅ correct declaration
 const bool get_show_file_extension(); // ✅ correct declaration
+
+/* Whitelist configuration accessors */
+const bool get_whitelist_enabled(void);
+/* Returns a malloc'd array of malloc'd strings. Caller must free via free_whitelist_entries().
+   On return, *out_count is set to the number of entries (may be 0). */
+char **get_whitelist_ips(int *out_count);
+char **get_whitelist_files(int *out_count);
+void free_whitelist_entries(char **entries, int count);
 
 #endif
